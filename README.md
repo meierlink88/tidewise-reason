@@ -27,10 +27,15 @@ LinkML Event model
 - Runtime behavior intentionally waits for confirmation of the public test seam.
 
 The Intel macOS development environment pins `onnxruntime==1.20.1`, `torch==2.2.2`,
-`numba==0.61.2`, and `llvmlite==0.44.0` because newer releases do not publish compatible x86_64
-wheels. The Semantica 0.6.0 PyPI distribution does not contain the Oxigraph module present in the
-current source repository, so this slice does not claim embedded RDF persistence. Remove the
-platform pins after upstream package metadata and wheels are verified.
+`transformers==4.57.6`, `numpy==1.26.4`, `numba==0.61.2`, and `llvmlite==0.44.0`. Newer PyTorch
+releases do not publish compatible x86_64 macOS wheels, PyTorch 2.2.2 uses the NumPy 1 ABI, and
+Transformers 5 requires PyTorch 2.4 or newer. Because Semantica 0.6.0 declares `numpy>=2.0.2`, uv
+uses an explicit NumPy override documented in `pyproject.toml`. Remove the override only after a
+Semantica and PyTorch release pair is verified on Intel macOS, or after Intel macOS ceases to be a
+supported development target.
+
+The Semantica 0.6.0 PyPI distribution does not contain the Oxigraph module present in the current
+source repository, so this slice does not claim embedded RDF persistence.
 
 ## Local setup
 
@@ -38,6 +43,7 @@ platform pins after upstream package metadata and wheels are verified.
 uv sync
 PYSTOW_HOME=.cache/pystow uv run python -c "import semantica; print(semantica.__version__)"
 PYSTOW_HOME=.cache/pystow .venv/bin/python scripts/smoke_semantic_model.py
+uv run pytest tests/test_semantica_compatibility.py -q
 ```
 
 `PYSTOW_HOME` is project-local so LinkML tooling remains hermetic in sandboxed and CI runs.

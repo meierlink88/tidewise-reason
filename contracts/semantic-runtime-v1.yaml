@@ -1,0 +1,58 @@
+openapi: 3.1.0
+info:
+  title: Tidewise Semantic Runtime
+  version: 1.0.0
+paths:
+  /health:
+    get:
+      operationId: getSemanticRuntimeHealth
+      summary: Verify the Semantic Runtime and its required projection stores.
+      responses:
+        "200":
+          description: Semantic Runtime is ready.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticRuntimeHealth"
+        "503":
+          description: A required projection store is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticRuntimeUnavailable"
+components:
+  schemas:
+    SemanticRuntimeHealth:
+      type: object
+      additionalProperties: false
+      required: [status, service, version, semantica_version, dependencies]
+      properties:
+        status:
+          const: ok
+        service:
+          const: semantic-runtime
+        version:
+          type: string
+        semantica_version:
+          type: string
+        dependencies:
+          type: object
+          additionalProperties: false
+          required: [neo4j, qdrant]
+          properties:
+            neo4j:
+              const: ok
+            qdrant:
+              const: ok
+    SemanticRuntimeUnavailable:
+      type: object
+      additionalProperties: false
+      required: [status, service, reason]
+      properties:
+        status:
+          const: unavailable
+        service:
+          const: semantic-runtime
+        reason:
+          type: string
+          maxLength: 240

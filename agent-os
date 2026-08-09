@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RUNTIME_DIR="$PROJECT_ROOT/.runtime"
+ENV_FILE="$RUNTIME_DIR/stack.env"
+COMPOSE_FILE="$PROJECT_ROOT/deploy/compose.yaml"
+
+usage() {
+  printf '%s\n' \
+    "Usage: ./agent-os <command>" \
+    "" \
+    "Commands:" \
+    "  up          Build, start, and wait for the complete local stack" \
+    "  down        Stop the stack without deleting data" \
+    "  status      Show container and health status" \
+    "  logs        Follow logs from all services" \
+    "  reset --yes Stop the stack and remove this project's volumes"
+}
+
+ensure_env() {
+  if [[ -f "$ENV_FILE" ]]; then
+    return
+  fi
+
+  mkdir -p "$RUNTIME_DIR"
+  local password
+  password="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
+  umask 077
+  {
+    printf 'NEO4J_PASSWORD=%s\n' "$password"
+    printf 'NEO4J_HTTP_PORT=7474\n'
+    printf 'NEO4J_BOLT_PORT=7687\n'
+    printf 'QDRANT_HTTP_PORT=7433\n'
+    printf 'QDRANT_GRPC_PORT=7434\n'
+    printf 'SEMANTIC_RUNTIME_PORT=8100\n'
+    printf 'SEMANTICA_EXPLORER_PORT=8000\n'
+    printf 'AGENT_RUNTIME_PORT=8200\n'
+  } >"$ENV_FILE"
+  printf 'Created local runtime configuration: %s\n' "$ENV_FILE"
+}
+
+compose() {
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+}
+
+command="${1:-}"
+case "$command" in
+  up)
+    ensure_env
+    compose up --build --detach --wait
+    compose ps
+    ;;
+  down)
+    ensure_env
+    compose down
+    ;;
+  status)
+    ensure_env
+    compose ps
+    ;;
+  logs)
+    ensure_env
+    compose logs --follow
+    ;;
+  reset)
+    if [[ "${2:-}" != "--yes" ]]; then
+      printf 'Refusing to remove volumes without: ./agent-os reset --yes\n' >&2
+      exit 2
+    fi
+    ensure_env
+    compose down --volumes
+    ;;
+  *)
+    usage
+    exit 2
+    ;;
+esac

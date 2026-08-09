@@ -1,8 +1,6 @@
-.venv/
-.cache/
-__pycache__/
-.pytest_cache/
-.ruff_cache/
-dist/
-*.pyc
+.DS_Store
 .env
+.runtime/
+.venv/
+__pycache__/
+*.pyc

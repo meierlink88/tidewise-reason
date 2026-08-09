@@ -1,0 +1,128 @@
+# DRAFT ONLY: not applied. Review each type before any future OpenSPG submission.
+namespace Tidewise
+
+ResearchEntity(投研实体): EntityType
+  desc: OpenSPG 投影基类，仅用于承载 Tidewise Data TBox 中的规范投研实体类型。
+
+AllianceOrganization(联盟组织) -> ResearchEntity:
+  desc: alliance_org@1。由多个独立成员基于共同章程、协议或长期协作机制组成，具有可识别组织身份的联盟或协会。
+
+IndustryChainNode(产业链节点) -> ResearchEntity:
+  desc: chain_node@1。产业链中表示投入、制造、工艺、组件、设备、服务或关键经济环节的规范节点。
+  relations:
+    produces(生产): Product
+      desc: 直接产出产品；来自已批准 Direct Transmission Rule 的关系签名。
+    produces(生产): IndustryChainNode
+      desc: 上游产业链节点直接产出下游产业链节点所代表的供给对象。
+
+Commodity(大宗商品) -> ResearchEntity:
+  desc: commodity@1。具有标准化品类、可形成公开或合同市场价格并可被交易或交付的基础商品。
+
+Company(企业) -> ResearchEntity:
+  desc: company@1。具有独立经营身份的企业、集团或法人经营主体。
+  relations:
+    produces(生产): Product
+      desc: 企业直接生产产品；来自已批准 Direct Transmission Rule 的关系签名。
+
+ResearchConcept(研究概念) -> ResearchEntity:
+  desc: concept@1。用于组织具有共同技术、商业模式或市场叙事特征对象的受控研究概念。
+
+Economy(经济体) -> ResearchEntity:
+  desc: economy@1。用于宏观经济分析和统计的国家、地区或跨国家经济区域。
+
+MarketIndex(市场指数) -> ResearchEntity:
+  desc: index@1。按照稳定编制规则计算，用于衡量一组证券、商品、汇率或市场表现的指标化对象。
+
+Industry(行业) -> ResearchEntity:
+  desc: industry@1。按主要经济活动、产品或服务供给方式划分的稳定产业分类。
+
+IndustryChain(产业链) -> ResearchEntity:
+  desc: industry_chain@1。围绕明确目标产出与终端用途，由多个经济节点通过投入、组成、技术支撑或依赖形成的有边界研究子图。
+
+FinancialInstrument(金融工具) -> ResearchEntity:
+  desc: instrument@1。具有可交易或可订立合约属性的金融资产类别或标准化金融工具。
+
+TradingMarket(交易市场) -> ResearchEntity:
+  desc: market@1。具有稳定交易范围、组织规则或交易场所身份的正式市场或交易所。
+
+NaturalPerson(人物) -> ResearchEntity:
+  desc: person@1。能够以稳定姓名或正式身份识别的自然人。
+
+PolicyBody(政策与监管机构) -> ResearchEntity:
+  desc: policy_body@1。依法或依正式授权制定、执行、解释政策并实施公共监管的政府部门、中央银行、法院或监管机构。
+
+Product(产品) -> ResearchEntity:
+  desc: product@1。企业生产、销售、采购或被市场需求的可识别产品、产品族或商业化服务对象。
+
+MarketSector(市场板块) -> ResearchEntity:
+  desc: sector@1。由市场或研究分类规则聚合的一组证券或企业板块，用于描述共同市场属性。
+
+Security(证券) -> ResearchEntity:
+  desc: security@1。由发行主体发行并具有独立交易身份的股票、债券、基金份额或其他正式证券。
+
+VariableSignal(变量信号): EventType
+  desc: Event-native、具有来源与时间边界的受控变量变化；不是实体静态属性或投资结论。
+  properties:
+    subject(信号主体): ResearchEntity
+    direction(变化方向): Text
+      constraint: NotNull, Enum = "increase,decrease,unchanged,mixed,uncertain"
+    assertionModality(断言模态): Text
+      constraint: NotNull, Enum = "actual,stated_intent,source_forecast"
+    measurementValue(测量值): Text
+      desc: 保留原始或结构化测量值；无量化依据时可为空。
+    unit(单位): Text
+    sourceEventId(来源事件ID): Text
+    sourceEvidenceId(来源证据ID): Text
+
+GrossMarginSignal(毛利率信号) -> VariableSignal:
+  desc: gross_margin@1。指定报告期毛利率；适用类型见映射文档。
+
+MarketDemandSignal(市场需求信号) -> VariableSignal:
+  desc: market_demand@1。指定市场与期间内需求数量或强弱；适用类型见映射文档。
+
+MarketPriceSignal(市场价格信号) -> VariableSignal:
+  desc: market_price@1。明确成交、现货、合同或公开报价；适用类型见映射文档。
+
+MarketSupplySignal(市场供给信号) -> VariableSignal:
+  desc: market_supply@1。指定市场与期间内可供给的数量或充足程度；适用类型见映射文档。
+
+NetProfitSignal(净利润信号) -> VariableSignal:
+  desc: net_profit@1。指定报告期口径明确的净利润；适用类型见映射文档。
+
+OrderQuantitySignal(订单数量信号) -> VariableSignal:
+  desc: order_quantity@1。订单中的产品数量；适用类型见映射文档。
+
+OrderValueSignal(订单金额信号) -> VariableSignal:
+  desc: order_value@1。订单或合同金额；适用类型见映射文档。
+
+PolicySupportIntensitySignal(政策支持强度信号) -> VariableSignal:
+  desc: policy_support_intensity@1。明确政策措施对规范对象的支持方向；适用类型见映射文档。
+
+ProductionVolumeSignal(产量信号) -> VariableSignal:
+  desc: production_volume@1。指定期间内实际或声明的生产数量；适用类型见映射文档。
+
+RegulatoryRestrictionIntensitySignal(监管限制强度信号) -> VariableSignal:
+  desc: regulatory_restriction_intensity@1。明确监管措施对规范对象的限制方向；适用类型见映射文档。
+
+RevenueSignal(营业收入信号) -> VariableSignal:
+  desc: revenue@1。指定报告期营业收入；适用类型见映射文档。
+
+SalesVolumeSignal(销量信号) -> VariableSignal:
+  desc: sales_volume@1。指定期间内销售或交付数量；适用类型见映射文档。
+
+DirectImpactAssertion(直接影响断言): EventType
+  desc: 从来源 VariableSignal 到目标实体受控变量的一跳分析断言；不是 Event 原生事实或正式图关系。
+  properties:
+    subject(影响目标): ResearchEntity
+    sourceSignal(来源变量信号): VariableSignal
+    affectedVariableKey(受影响变量): Text
+      constraint: NotNull, Enum = "gross_margin,market_demand,market_price,market_supply,net_profit,order_quantity,order_value,policy_support_intensity,production_volume,regulatory_restriction_intensity,revenue,sales_volume"
+    affectedDirection(受影响方向): Text
+      constraint: NotNull, Enum = "increase,decrease,unchanged,mixed,uncertain"
+    derivationType(推导方式): Text
+      constraint: NotNull, Enum = "event_explicit,rule_inferred"
+    mechanismSummary(传导机制): Text
+      constraint: NotNull
+    ruleKey(规则标识): Text
+      constraint: Enum = "chain_node_production_decrease_reduces_product_supply,production_decrease_reduces_product_supply,production_increase_raises_product_supply,synthetic_production_decrease_reduces_chain_supply"
+    ruleVersion(规则版本): Integer

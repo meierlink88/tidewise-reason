@@ -11,3 +11,7 @@ context, executes approved reasoning, and exposes those capabilities through a v
 **Projection**:
 A rebuildable OWL, SHACL, concept-card, RDF, Neo4j, or Qdrant representation generated from the
 Semantic Model or accepted domain facts. A Projection is never an authority by itself.
+
+**Semantica Explorer**:
+A local diagnostic interface over a generated ContextGraph JSON projection. Semantica 0.6.0 does
+not automatically bind Explorer to this Runtime's Neo4j and Qdrant adapters.

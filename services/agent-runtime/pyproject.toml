@@ -9,7 +9,13 @@ description = "Agent execution infrastructure for Tidewise Agent OS"
 requires-python = ">=3.11,<3.13"
 dependencies = [
   "agno[async-postgres,os]==2.8.7",
+  "fastapi==0.141.1",
+  "httpx==0.28.1",
+  "uvicorn==0.52.1",
 ]
+
+[project.scripts]
+agent-runtime = "tidewise_agent_runtime.app:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tidewise_agent_runtime"]

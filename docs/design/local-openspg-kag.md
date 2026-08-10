@@ -21,6 +21,9 @@ configure an LLM/embedding provider, or claim production readiness.
 - Base the stack on the official OpenSPG 0.8 Compose topology.
 - Use Compose project name `tidewise-reason` and Compose-generated container names.
 - Use Compose-managed `tidewise-reason_*` volume names for persistent local data.
+- Mount `overrides/kag/kag_thinker.yaml` read-only because the pinned Server image requires the
+  `KAGModelPlanner.rewrite_prompt` constructor setting but omits it from its bundled thinker
+  pipeline. Verify this compatibility seam with `scripts/check-kag-thinker-pipeline.sh`.
 - Preserve the official `release-openspg-neo4j` network alias because OpenSPG seeds that hostname
   into the `KAG_ENV` project defaults.
 - Bind all published ports to `127.0.0.1`.

@@ -4,6 +4,8 @@ services:
   server:
     image: spg-registry.cn-hangzhou.cr.aliyuncs.com/spg/openspg-server@sha256:fe6708deef9ebb8da8da7b1cb643e83b827769a5be8811961311639aa1f2cb88
     restart: unless-stopped
+    volumes:
+      - ./overrides/kag/kag_thinker.yaml:/home/admin/miniconda3/lib/python3.10/site-packages/kag/solver/pipelineconf/kag_thinker.yaml:ro
     ports:
       - "127.0.0.1:8887:8887"
     depends_on:

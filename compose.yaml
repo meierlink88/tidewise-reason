@@ -1,4 +1,4 @@
-name: agent-os
+name: tidewise-reason
 
 services:
   server:

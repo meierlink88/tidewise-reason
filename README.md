@@ -1,7 +1,7 @@
-# Agent OS: OpenSPG + KAG
+# Tidewise Reason: OpenSPG + KAG
 
 Local OpenSPG 0.8 and KAG 0.8 evaluation environment. Docker Compose uses the project/group name
-`agent-os`.
+`tidewise-reason`.
 
 ## Start
 
@@ -39,8 +39,11 @@ imported.
 ./scripts/stop.sh
 ```
 
-Persistent Docker volumes are retained. To remove this installation's data as well, run
-`docker compose down --volumes` explicitly.
+Persistent Docker volumes are retained. To remove this installation's data deliberately, run:
+
+```bash
+docker compose down --volumes
+```
 
 The base UI can run without a model provider. Building a knowledge base and using KAG inference
 requires configuring a generation model and an embedding model in the product UI.

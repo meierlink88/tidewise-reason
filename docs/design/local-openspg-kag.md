@@ -3,7 +3,7 @@
 ## Outcome
 
 Run the official OpenSPG/KAG product stack locally under the Docker Compose project name
-`agent-os`, and install the KAG 0.8.0 developer toolkit in an isolated Python 3.10 environment.
+`tidewise-reason`, and install the KAG 0.8.0 developer toolkit in an isolated Python 3.10 environment.
 
 ## Scope and ownership
 
@@ -19,7 +19,8 @@ configure an LLM/embedding provider, or claim production readiness.
 ## Deployment decisions
 
 - Base the stack on the official OpenSPG 0.8 Compose topology.
-- Use Compose project name `agent-os` and Compose-generated container names.
+- Use Compose project name `tidewise-reason` and Compose-generated container names.
+- Use Compose-managed `tidewise-reason_*` volume names for persistent local data.
 - Preserve the official `release-openspg-neo4j` network alias because OpenSPG seeds that hostname
   into the `KAG_ENV` project defaults.
 - Bind all published ports to `127.0.0.1`.
@@ -32,7 +33,7 @@ configure an LLM/embedding provider, or claim production readiness.
 
 The installation is accepted when:
 
-1. Docker reports the four `agent-os` services running.
+1. Docker reports the four `tidewise-reason` services running.
 2. `http://127.0.0.1:8887` returns the OpenSPG/KAG product page.
 3. The local Python environment can execute `kag --help` and `knext --help`.
 

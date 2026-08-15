@@ -2,7 +2,12 @@
 
 This repository owns the local OpenSPG + KAG evaluation environment.
 
-- Keep the Docker Compose project name `tidewise-reason`.
+- Keep the local Docker Compose project name `tidewise-app`, service name `server`, and fixed local
+  container name `reason-server`.
+- Reuse the external `tidewise-local` network and the independently operated MySQL, Neo4j and
+  MinIO services from `tidewise-infra`; do not provision middleware in this repository.
+- Use service-scoped lifecycle commands. Never run unscoped `docker compose down` or
+  `--remove-orphans` against the shared application project.
 - Follow the official OpenSPG/KAG 0.8 topology unless a documented experiment requires otherwise.
 - Keep runtime source checkouts, Python environments, data and credentials out of Git.
 - Bind local evaluation ports to loopback by default.

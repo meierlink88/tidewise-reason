@@ -2,4 +2,5 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-docker compose --project-directory "$repo_root" -f "$repo_root/compose.yaml" down
+docker compose --project-directory "$repo_root" -f "$repo_root/compose.yaml" stop server
+docker compose --project-directory "$repo_root" -f "$repo_root/compose.yaml" rm -f server

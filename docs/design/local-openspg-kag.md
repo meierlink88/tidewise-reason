@@ -2,8 +2,9 @@
 
 ## Outcome
 
-Run the official OpenSPG/KAG product stack locally under the Docker Compose project name
-`tidewise-reason`, and install the KAG 0.8.0 developer toolkit in an isolated Python 3.10 environment.
+Run the official OpenSPG/KAG Server locally in the shared Docker Compose project `tidewise-app`,
+consume the independently operated `tidewise-infra` middleware, and install the KAG 0.8.0
+developer toolkit in an isolated Python 3.10 environment.
 
 ## Scope and ownership
 
@@ -19,8 +20,9 @@ configure an LLM/embedding provider, or claim production readiness.
 ## Deployment decisions
 
 - Base the stack on the official OpenSPG 0.8 Compose topology.
-- Use Compose project name `tidewise-reason` and Compose-generated container names.
-- Use Compose-managed `tidewise-reason_*` volume names for persistent local data.
+- Use Compose project name `tidewise-app`, service name `server`, and fixed local container name
+  `reason-server`.
+- Keep MySQL, Neo4j and MinIO plus their existing persistent volumes in `tidewise-infra`.
 - Mount `overrides/kag/kag_thinker.yaml` read-only because the pinned Server image requires the
   `KAGModelPlanner.rewrite_prompt` constructor setting but omits it from its bundled thinker
   pipeline. Verify this compatibility seam with `scripts/check-kag-thinker-pipeline.sh`.
@@ -36,7 +38,8 @@ configure an LLM/embedding provider, or claim production readiness.
 
 The installation is accepted when:
 
-1. Docker reports the four `tidewise-reason` services running.
+1. Docker reports `reason-server` healthy while MySQL, Neo4j and MinIO remain healthy in
+   `tidewise-infra`.
 2. `http://127.0.0.1:8887` returns the OpenSPG/KAG product page.
 3. The local Python environment can execute `kag --help` and `knext --help`.
 
@@ -45,7 +48,7 @@ model configuration after the base stack is healthy.
 
 ## Rollback and recovery
 
-- Stop services: `docker compose down`.
-- Remove only this installation's persisted data: `docker compose down --volumes`.
+- Stop and remove only Reason Server with `./scripts/stop.sh`.
+- Shared middleware data is never removed from this repository.
 - The previous repository worktree is recoverable from the Git stash named
   `pre-openspg-kag-rebuild-2026-08-09`.

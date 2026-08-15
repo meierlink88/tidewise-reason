@@ -2,4 +2,4 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-docker compose --project-directory "$repo_root" -f "$repo_root/compose.yaml" up -d
+docker compose --project-directory "$repo_root" -f "$repo_root/compose.yaml" up -d server

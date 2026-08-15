@@ -1,7 +1,7 @@
 # Tidewise Reason: OpenSPG + KAG
 
-Local OpenSPG 0.8 and KAG 0.8 evaluation environment. Docker Compose uses the project/group name
-`tidewise-reason`.
+Local OpenSPG 0.8 and KAG 0.8 evaluation environment. Reason Server joins the shared
+`tidewise-app` project and consumes MySQL, Neo4j and MinIO from `tidewise-infra`.
 
 ## Start
 
@@ -26,6 +26,9 @@ imported.
 
 ## Services
 
+This repository starts only the `reason-server` OpenSPG/KAG Web container. The remaining endpoints
+belong to the independently operated shared infrastructure stack.
+
 | Service | Local address |
 | --- | --- |
 | OpenSPG/KAG Web | <http://127.0.0.1:8887> |
@@ -39,11 +42,9 @@ imported.
 ./scripts/stop.sh
 ```
 
-Persistent Docker volumes are retained. To remove this installation's data deliberately, run:
-
-```bash
-docker compose down --volumes
-```
+The stop script removes only Reason Server. It never stops shared infrastructure or removes its
+persistent volumes. Do not run unscoped `docker compose down` or `--remove-orphans` in this
+repository.
 
 The base UI can run without a model provider. Building a knowledge base and using KAG inference
 requires configuring a generation model and an embedding model in the product UI.

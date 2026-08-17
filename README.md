@@ -1,12 +1,12 @@
 # Tidewise Reason: OpenSPG + KAG
 
-Local OpenSPG 0.8 and KAG 0.8 evaluation environment. Reason Server joins the shared
-`tidewise-app` project and consumes MySQL, Neo4j and MinIO from `tidewise-infra`.
+Local OpenSPG and KAG evaluation environment. The official OpenSPG Server `latest` image is the
+sole runtime release. Reason Server joins the shared `tidewise-app` project and consumes MySQL,
+Neo4j and MinIO from `tidewise-infra`.
 
 ## Start
 
 ```bash
-./scripts/install-kag.sh
 ./scripts/start.sh
 ```
 
@@ -15,14 +15,23 @@ Open <http://127.0.0.1:8887> and sign in with the official local demo account:
 - Username: `openspg`
 - Password: `openspg@kag`
 
-The KAG developer commands are available at `.venv/bin/kag` and `.venv/bin/knext`.
+`start.sh` pulls the official image before recreating only the `server` service. The bundled KAG
+developer commands are available inside the container:
+
+```bash
+docker compose exec -e KAG_PROJECT_HOST_ADDR=http://127.0.0.1:8887 server kag --help
+docker compose exec -e KAG_PROJECT_HOST_ADDR=http://127.0.0.1:8887 server knext --help
+```
+
+This repository does not build OpenSPG or KAG from source and does not inject a replacement JAR or
+wheel into the official image.
 
 ## Tidewise Schema
 
-The OpenSPG project `Tidewise` currently uses its pre-projection default Schema. The combined
-Tidewise TBox projection in [`schemas/Tidewise.schema`](schemas/Tidewise.schema) is an unapproved,
-inactive draft; review each type before any future submission. No PostgreSQL ABox facts have been
-imported.
+The OpenSPG project `Tidewise` currently uses its pre-projection default Schema. The manual-review
+import candidate in [`schemas/Tidewise.schema`](schemas/Tidewise.schema) preserves those KAG
+foundation types and represents all 16 active PostgreSQL TBox entity types. It has not been
+submitted to OpenSPG, and no PostgreSQL ABox facts have been imported.
 
 ## Services
 
@@ -49,4 +58,6 @@ repository.
 The base UI can run without a model provider. Building a knowledge base and using KAG inference
 requires configuring a generation model and an embedding model in the product UI.
 
-See [the local deployment design](docs/design/local-openspg-kag.md) for boundaries and recovery.
+See [the local deployment design](docs/design/local-openspg-kag.md) and
+[the official runtime policy](docs/design/official-openspg-kag-runtime.md) for boundaries,
+extension seams and recovery.

@@ -3,7 +3,8 @@ name: tidewise-app
 services:
   server:
     container_name: reason-server
-    image: ${TIDEWISE_REASON_IMAGE:-tidewise-reason:openspg-0.8-kag-0.8.0}
+    image: spg-registry.cn-hangzhou.cr.aliyuncs.com/spg/openspg-server:latest
+    pull_policy: always
     restart: unless-stopped
     ports:
       - "127.0.0.1:8887:8887"
@@ -16,12 +17,10 @@ services:
       - -Xms2048m
       - -Xmx8192m
       - -jar
-      - arks-sofaboot-executable.jar
+      - arks-sofaboot-0.0.1-SNAPSHOT-executable.jar
       - --server.repository.impl.jdbc.host=mysql
       - --server.repository.impl.jdbc.password=${OPENSPG_MYSQL_ROOT_PASSWORD:-openspg}
       - --builder.model.execute.num=20
-      - --python.exec=/opt/tidewise/venv/bin/python
-      - --python.paths=/opt/tidewise/venv/lib/python3.10/site-packages/
       - --cloudext.graphstore.url=neo4j://neo4j:7687?user=${OPENSPG_NEO4J_USER:-neo4j}&password=${OPENSPG_NEO4J_PASSWORD:-neo4j@openspg}&database=neo4j
       - --cloudext.searchengine.url=neo4j://neo4j:7687?user=${OPENSPG_NEO4J_USER:-neo4j}&password=${OPENSPG_NEO4J_PASSWORD:-neo4j@openspg}&database=neo4j
     healthcheck:

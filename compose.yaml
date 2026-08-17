@@ -3,10 +3,8 @@ name: tidewise-app
 services:
   server:
     container_name: reason-server
-    image: spg-registry.cn-hangzhou.cr.aliyuncs.com/spg/openspg-server@sha256:fe6708deef9ebb8da8da7b1cb643e83b827769a5be8811961311639aa1f2cb88
+    image: ${TIDEWISE_REASON_IMAGE:-tidewise-reason:openspg-0.8-kag-0.8.0}
     restart: unless-stopped
-    volumes:
-      - ./overrides/kag/kag_thinker.yaml:/home/admin/miniconda3/lib/python3.10/site-packages/kag/solver/pipelineconf/kag_thinker.yaml:ro
     ports:
       - "127.0.0.1:8887:8887"
     environment:
@@ -18,14 +16,16 @@ services:
       - -Xms2048m
       - -Xmx8192m
       - -jar
-      - arks-sofaboot-0.0.1-SNAPSHOT-executable.jar
+      - arks-sofaboot-executable.jar
       - --server.repository.impl.jdbc.host=mysql
       - --server.repository.impl.jdbc.password=${OPENSPG_MYSQL_ROOT_PASSWORD:-openspg}
       - --builder.model.execute.num=20
+      - --python.exec=/opt/tidewise/venv/bin/python
+      - --python.paths=/opt/tidewise/venv/lib/python3.10/site-packages/
       - --cloudext.graphstore.url=neo4j://neo4j:7687?user=${OPENSPG_NEO4J_USER:-neo4j}&password=${OPENSPG_NEO4J_PASSWORD:-neo4j@openspg}&database=neo4j
       - --cloudext.searchengine.url=neo4j://neo4j:7687?user=${OPENSPG_NEO4J_USER:-neo4j}&password=${OPENSPG_NEO4J_PASSWORD:-neo4j@openspg}&database=neo4j
     healthcheck:
-      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:8887']
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8887/actuator/health', timeout=3)"]
       interval: 10s
       timeout: 5s
       retries: 30

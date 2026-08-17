@@ -1,0 +1,10 @@
+**
+!.runtime/
+!.runtime/build/
+!.runtime/build/openspg/
+!.runtime/build/openspg/*.jar
+!.runtime/build/kag/
+!.runtime/build/kag/*.whl
+!requirements/
+!requirements/kag-runtime.lock
+!Dockerfile

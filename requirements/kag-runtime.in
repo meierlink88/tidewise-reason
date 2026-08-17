@@ -1,0 +1,5 @@
+# KAG dependencies come from the exact source checkout restored by sync-upstreams.sh.
+-r ../.runtime/upstream/kag/requirements.txt
+
+# OpenSPG embeds Python operators through PemJa; KAG itself does not declare it.
+pemja==0.4.0

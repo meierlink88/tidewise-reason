@@ -15,9 +15,13 @@ pipeline_config = get_pipeline_conf(
     {"chat_llm": {"type": "openai"}, "retrievers": []},
 )
 planner_config = pipeline_config["planner"]
+assert planner_config["type"] == "kag_model_planner"
+assert "rewrite_prompt" not in planner_config
 planner_config["llm"] = None
 planner = PlannerABC.from_config(planner_config)
 
-assert planner.rewrite_prompt.__class__.__name__ == "DefaultRewriteSubTaskQueryPrompt"
+assert planner.__class__.__name__ == "KAGModelPlanner"
+assert planner.system_prompt.__class__.__name__ == "KagSystemPrompt"
+assert planner.clarification_prompt.__class__.__name__ == "KagClarificationPrompt"
 print("kag_thinker_pipeline planner configuration is valid")
 PY

@@ -1,33 +1,26 @@
 # Tidewise TBox to OpenSPG Schema
 
-> Status: unapproved draft. The combined projection was rolled back and must be reviewed one type
-> at a time before any future submission.
+> Status: manual-import candidate. The file has not been submitted to OpenSPG.
 
 ## Outcome
 
-Propose a projection of the current authoritative Tidewise PostgreSQL TBox into the existing
-OpenSPG project `Tidewise` (project ID `1`) as Schema only. The proposal is not currently applied.
+Represent the 16 active entity types from the authoritative Tidewise PostgreSQL TBox as an
+OpenSPG 0.8 declarative Schema while retaining the OpenSPG/KAG foundation types already present in
+the `Tidewise` project.
 
-## Ownership and boundaries
+## Scope
 
-- Tidewise Data Service and PostgreSQL remain the only owners of the source TBox and domain facts.
-- OpenSPG owns only this local evaluation projection.
-- This is a one-time, read-only source snapshot, not a production database integration or sync job.
-- PostgreSQL ABox tables such as `entity_nodes` and `entity_edges` are explicitly out of scope.
-- The source snapshot is `event-semantics.phase-one@1`: 16 active Entity Type Definitions, 12 active
-  Variable Definitions and 4 approved Direct Transmission Rules.
+- Source snapshot: `event-semantics.phase-one@1`.
+- Source table: `public.entity_type_definitions`, active rows only.
+- Target file: `schemas/Tidewise.schema`.
+- The existing `Person` foundation type is enriched from `person@1`; the other 15 domain types are
+  added as distinct EntityTypes.
+- PostgreSQL ABox facts, variable signals, event types, relations and executable rules are not part
+  of this file.
+- The file is prepared for manual review and import; this repository does not submit it
+  automatically.
 
 ## Mapping
-
-| Tidewise TBox | OpenSPG Schema | Notes |
-| --- | --- | --- |
-| Entity Type Definition | `ResearchEntity` subtype | Stable key/version and definition are retained in the mapping and type description. |
-| Variable Definition | `VariableSignal` EventType subtype | Keeps changes time-scoped instead of turning them into static entity attributes. |
-| Applicable Entity Types | Event subtype description | OpenSPG 0.8 MarkLang cannot enforce a union-typed Event subject without a synthetic type hierarchy. |
-| `produces` rule signature | Typed OpenSPG relation | Defines Company→Product, IndustryChainNode→Product and IndustryChainNode→IndustryChainNode. |
-| Direct Transmission Rule | `DirectImpactAssertion` controlled fields | Rule keys are allowed identities; executable KGDSL is deferred until temporal fact semantics are designed. |
-
-## Type-name mapping
 
 | PostgreSQL `type_key` | OpenSPG type |
 | --- | --- |
@@ -35,46 +28,40 @@ OpenSPG project `Tidewise` (project ID `1`) as Schema only. The proposal is not 
 | `chain_node` | `IndustryChainNode` |
 | `commodity` | `Commodity` |
 | `company` | `Company` |
-| `concept` | `ResearchConcept` |
+| `concept` | `MarketConcept` |
 | `economy` | `Economy` |
 | `index` | `MarketIndex` |
 | `industry` | `Industry` |
 | `industry_chain` | `IndustryChain` |
 | `instrument` | `FinancialInstrument` |
 | `market` | `TradingMarket` |
-| `person` | `NaturalPerson` |
+| `person` | `Person` |
 | `policy_body` | `PolicyBody` |
 | `product` | `Product` |
 | `sector` | `MarketSector` |
 | `security` | `Security` |
 
-## Variable-signal mapping
+## Modeling decisions
 
-| PostgreSQL `variable_key` | OpenSPG EventType | Applicable OpenSPG entity types |
-| --- | --- | --- |
-| `gross_margin` | `GrossMarginSignal` | `Company` |
-| `market_demand` | `MarketDemandSignal` | `IndustryChainNode`, `Commodity`, `Industry`, `IndustryChain`, `Product` |
-| `market_price` | `MarketPriceSignal` | `Commodity`, `Product` |
-| `market_supply` | `MarketSupplySignal` | `IndustryChainNode`, `Commodity`, `Industry`, `IndustryChain`, `Product` |
-| `net_profit` | `NetProfitSignal` | `Company` |
-| `order_quantity` | `OrderQuantitySignal` | `Company`, `Product` |
-| `order_value` | `OrderValueSignal` | `Company`, `Product` |
-| `policy_support_intensity` | `PolicySupportIntensitySignal` | `IndustryChainNode`, `Commodity`, `Company`, `ResearchConcept`, `Industry`, `IndustryChain`, `Product`, `MarketSector` |
-| `production_volume` | `ProductionVolumeSignal` | `IndustryChainNode`, `Commodity`, `Company`, `Industry`, `Product` |
-| `regulatory_restriction_intensity` | `RegulatoryRestrictionIntensitySignal` | `IndustryChainNode`, `Commodity`, `Company`, `ResearchConcept`, `Industry`, `IndustryChain`, `Product`, `MarketSector`, `Security` |
-| `revenue` | `RevenueSignal` | `Company` |
-| `sales_volume` | `SalesVolumeSignal` | `Company`, `Industry`, `Product` |
+- `namespace Tidewise` is the first line because OpenSPG requires the project prefix first.
+- Parent-child inheritance is not introduced: the PostgreSQL TBox does not currently declare an
+  authoritative type hierarchy.
+- TBox governance fields are not modeled as instance properties. Repeating `type_key`, version,
+  inclusion criteria or extraction permissions on every ABox entity would change their meaning.
+- Business definitions and inclusion/exclusion criteria are consolidated into each OpenSPG type's
+  `desc`, where they can guide later schema-constrained extraction.
+- `MarketConcept` remains an EntityType. Converting it to OpenSPG ConceptType would introduce
+  concept hierarchy semantics that the source TBox does not yet define.
 
-## Failure and rollback
+## Manual import gate
 
-- Schema submission is idempotent: re-submitting the same MarkLang produces no diff.
-- A parse or server validation error stops before ABox creation because this task has no data-import
-  step.
-- Rollback is performed by committing the previous project Schema; no PostgreSQL state is modified.
+1. Review the diff in OpenSPG before confirming the Schema update.
+2. Confirm the 11 KAG foundation types are retained.
+3. Confirm the resulting project exposes 16 Tidewise TBox entity types, counting the enriched
+   `Person` type.
+4. Do not start an ABox build until the Schema diff is accepted.
 
-## Acceptance
+## Rollback
 
-1. MarkLang parses locally without a server mutation.
-2. OpenSPG project `1` exposes all 16 mapped domain entity types and all 12 variable-signal types.
-3. The three `produces` relation signatures and `DirectImpactAssertion` controlled fields exist.
-4. Neo4j contains no instances carrying the `Tidewise` domain labels after Schema submission.
+Restore the pre-projection Schema from `.runtime/Tidewise/schema/Tidewise.schema`. No PostgreSQL
+state is modified by either import or rollback.

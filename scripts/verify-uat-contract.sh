@@ -44,7 +44,7 @@ assert service["ports"] == [
         "target": 8887,
         "published": "8887",
         "protocol": "tcp",
-        "host_ip": "127.0.0.1",
+        "host_ip": "0.0.0.0",
     }
 ]
 assert set(service["networks"]) == {"tidewise-uat"}

@@ -95,7 +95,7 @@ done <<<"$published_containers"
 if [ -z "$published_containers" ] && [ -n "$(ss -H -ltn "sport = :$web_port")" ]; then
   fail "port-$web_port" "occupied by a non-Docker listener"
 fi
-pass loopback-web-port
+pass office-allowlisted-web-port
 
 docker run --rm -i \
   --network tidewise-uat \

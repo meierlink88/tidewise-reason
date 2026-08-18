@@ -12,7 +12,8 @@ backs up, restarts or rolls them back.
 - Container: `reason-server-uat`.
 - Deployment root: `/opt/tidewise/reason-uat`.
 - Shared external network: `tidewise-uat`.
-- Web endpoint: loopback-only `127.0.0.1:8887`.
+- Web endpoint: office-allowlisted ECS port `0.0.0.0:8887`, reached at
+  `http://123.60.99.198:8887`.
 - MySQL: the external `mysql:3306` network alias.
 - MinIO: the external `minio:9000` network alias.
 - Neo4j: host-native Bolt through the `release-openspg-neo4j` host-gateway alias.
@@ -33,7 +34,9 @@ Before Reason deploys, `tidewise-ai` must provide:
 2. Host-native Neo4j reachable from `host-gateway:7687` with valid Reason credentials.
 3. A Neo4j GDS release compatible with the installed Neo4j release; `RETURN gds.version()` must
    succeed in the `neo4j` database.
-4. No public exposure of MySQL, MinIO or Neo4j administration/Bolt ports.
+4. MySQL and the MinIO S3 API remain private. `tidewise-ai` independently owns the
+   office-allowlisted Neo4j Browser/Bolt and MinIO Console ports; Reason only consumes their
+   internal provider endpoints.
 5. Its own middleware backup, upgrade, clearing and rollback procedures.
 
 The Reason preflight checks this contract without modifying any middleware. A failed check stops the
@@ -82,6 +85,16 @@ the versioned Reason Schema artifacts, deploys only `server`, then verifies:
 - import of the bundled `openspg-kag` distribution;
 - `kag --help`, `knext --help`, and a real read-only `knext project list` call inside the official
   container.
+
+After a successful deployment, run the office-network acceptance seam from outside the ECS:
+
+```bash
+curl --fail --show-error --silent http://123.60.99.198:8887/ >/dev/null
+```
+
+Huawei Cloud security-group source-IP rules are the outer UAT access boundary. This native HTTP
+port is an explicitly accepted UAT exception and does not authorize unrestricted internet or
+production exposure. Replace it with a managed HTTPS/VPN operator ingress when one is available.
 
 Failure restores only the previous Reason Server release. It never invokes `docker compose down`,
 uses `--remove-orphans`, or changes external middleware. The current reviewed

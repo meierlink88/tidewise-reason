@@ -62,6 +62,29 @@ jobs:
               core.setFailed(`No successful CI run exists for ${process.env.TARGET_SHA}`);
             }
 
+      - name: Package the validated release
+        env:
+          TARGET_SHA: ${{ steps.release.outputs.commit_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="${RUNNER_TEMP}/reason-release-payload"
+          install -d -m 0700 "$payload"
+          git archive --format=tar.gz --output="$payload/reason-release.tar.gz" "$TARGET_SHA"
+          printf '%s\n' "$TARGET_SHA" > "$payload/commit.sha"
+          (
+            cd "$payload"
+            sha256sum reason-release.tar.gz > reason-release.tar.gz.sha256
+          )
+
+      - name: Upload the validated release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: reason-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/reason-release-payload
+          if-no-files-found: error
+          retention-days: 1
+
   deploy:
     name: Deploy Reason to UAT ECS
     runs-on: [self-hosted, linux, x64, tidewise-uat-ecs]
@@ -77,14 +100,30 @@ jobs:
       OPENSPG_MINIO_SECRET_KEY: ${{ secrets.OPENSPG_MINIO_SECRET_KEY }}
       OPENSPG_NEO4J_USER: ${{ vars.OPENSPG_NEO4J_USER }}
       OPENSPG_NEO4J_PASSWORD: ${{ secrets.OPENSPG_NEO4J_PASSWORD }}
-      REASON_CONTENT_SOURCE: ${{ github.workspace }}/schemas
       RELEASE_SHA: ${{ needs.resolve-release.outputs.commit_sha }}
       RELEASE_ID: ${{ needs.resolve-release.outputs.commit_sha }}-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
-      - name: Checkout validated Reason release
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download the validated Reason release
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.0
         with:
-          ref: ${{ needs.resolve-release.outputs.commit_sha }}
+          name: reason-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/reason-release-payload-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Verify and unpack the validated Reason release
+        env:
+          PAYLOAD_DIR: ${{ runner.temp }}/reason-release-payload-${{ github.run_id }}-${{ github.run_attempt }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ "$(cat "$PAYLOAD_DIR/commit.sha")" = "$RELEASE_SHA" ] \
+            || { echo "release payload commit does not match the validated commit" >&2; exit 1; }
+          (cd "$PAYLOAD_DIR" && sha256sum --check reason-release.tar.gz.sha256)
+          reason_workspace="${RUNNER_TEMP}/reason-release-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          install -d -m 0700 "$reason_workspace"
+          tar --extract --gzip --file "$PAYLOAD_DIR/reason-release.tar.gz" --directory "$reason_workspace"
+          test -x "$reason_workspace/infra/uat/deploy.sh"
+          echo "REASON_WORKSPACE=$reason_workspace" >> "$GITHUB_ENV"
+          echo "REASON_CONTENT_SOURCE=$reason_workspace/schemas" >> "$GITHUB_ENV"
 
       - name: Pull and resolve the official OpenSPG Server image
         id: image
@@ -120,25 +159,27 @@ jobs:
       - name: Preflight Reason and external infrastructure
         env:
           RUNTIME_ENV: ${{ steps.runtime.outputs.runtime }}
-          COMPOSE_FILE: ${{ github.workspace }}/infra/uat/compose.yaml
-        run: infra/uat/preflight.sh
+        run: |
+          export COMPOSE_FILE="$REASON_WORKSPACE/infra/uat/compose.yaml"
+          "$REASON_WORKSPACE/infra/uat/preflight.sh"
 
       - name: Deploy and verify only Reason Server
         env:
           RUNTIME_ENV: ${{ steps.runtime.outputs.runtime }}
-          COMPOSE_FILE: ${{ github.workspace }}/infra/uat/compose.yaml
-        run: infra/uat/deploy.sh
+        run: |
+          export COMPOSE_FILE="$REASON_WORKSPACE/infra/uat/compose.yaml"
+          "$REASON_WORKSPACE/infra/uat/deploy.sh"
 
       - name: Collect sanitized diagnostics
         id: diagnostics
         if: failure() && steps.runtime.outcome == 'success'
         env:
           RUNTIME_ENV: ${{ steps.runtime.outputs.runtime }}
-          COMPOSE_FILE: ${{ github.workspace }}/infra/uat/compose.yaml
         shell: bash
         run: |
           output="${RUNNER_TEMP}/reason-uat-diagnostics-${GITHUB_RUN_ID}.log"
-          infra/uat/collect-diagnostics.sh > "$output"
+          export COMPOSE_FILE="$REASON_WORKSPACE/infra/uat/compose.yaml"
+          "$REASON_WORKSPACE/infra/uat/collect-diagnostics.sh" > "$output"
           echo "file=$output" >> "$GITHUB_OUTPUT"
 
       - name: Upload sanitized diagnostics

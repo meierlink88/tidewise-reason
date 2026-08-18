@@ -5,6 +5,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 compose_file="$repo_root/infra/uat/compose.yaml"
 env_file="$repo_root/infra/uat/.env.example"
+workflow_file="$repo_root/.github/workflows/deploy-uat.yml"
 
 docker compose --env-file "$env_file" -f "$compose_file" config --quiet
 [ "$(docker compose --env-file "$env_file" -f "$compose_file" config --services)" = server ]
@@ -75,8 +76,12 @@ if grep -REn --include='*.sh' --include='*.yml' --include='*.yaml' \
 fi
 
 grep -q 'runs-on: \[self-hosted, linux, x64, tidewise-uat-ecs\]' \
-  "$repo_root/.github/workflows/deploy-uat.yml"
-grep -q 'REASON_CONTENT_SOURCE:' "$repo_root/.github/workflows/deploy-uat.yml"
+  "$workflow_file"
+grep -q 'REASON_CONTENT_SOURCE=' "$workflow_file"
+grep -q 'git archive --format=tar.gz' "$workflow_file"
+grep -q 'uses: actions/download-artifact@' "$workflow_file"
+grep -q 'sha256sum --check reason-release.tar.gz.sha256' "$workflow_file"
+[ "$(grep -c 'uses: actions/checkout@' "$workflow_file")" -eq 1 ]
 grep -q 'knext project list' "$repo_root/infra/uat/verify.sh"
 
 echo "PASS UAT repository contract"

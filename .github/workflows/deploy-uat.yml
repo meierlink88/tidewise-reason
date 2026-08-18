@@ -1,0 +1,158 @@
+name: Deploy Reason UAT
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Optional full commit SHA from main; defaults to latest main.
+        required: false
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: reason-uat-deploy
+  cancel-in-progress: false
+
+jobs:
+  resolve-release:
+    name: Validate Reason release commit
+    runs-on: ubuntu-latest
+    outputs:
+      commit_sha: ${{ steps.release.outputs.commit_sha }}
+    steps:
+      - name: Checkout main history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Resolve and validate commit
+        id: release
+        env:
+          REQUESTED_SHA: ${{ inputs.commit_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = refs/heads/main ] || { echo "Dispatch from main" >&2; exit 1; }
+          git fetch --no-tags origin main
+          target="${REQUESTED_SHA:-$(git rev-parse origin/main)}"
+          [[ "$target" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "commit_sha must be a full SHA" >&2; exit 1; }
+          git cat-file -e "${target}^{commit}"
+          git merge-base --is-ancestor "$target" origin/main \
+            || { echo "Release commit is not part of main" >&2; exit 1; }
+          echo "commit_sha=$(git rev-parse "$target")" >> "$GITHUB_OUTPUT"
+
+      - name: Require successful CI for the commit
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          TARGET_SHA: ${{ steps.release.outputs.commit_sha }}
+        with:
+          script: |
+            const response = await github.rest.actions.listWorkflowRuns({
+              ...context.repo,
+              workflow_id: 'ci.yml',
+              head_sha: process.env.TARGET_SHA,
+              status: 'completed',
+              per_page: 100,
+            });
+            if (!response.data.workflow_runs.some((run) => run.conclusion === 'success')) {
+              core.setFailed(`No successful CI run exists for ${process.env.TARGET_SHA}`);
+            }
+
+  deploy:
+    name: Deploy Reason to UAT ECS
+    runs-on: [self-hosted, linux, x64, tidewise-uat-ecs]
+    needs: resolve-release
+    environment: uat
+    env:
+      DEPLOY_ROOT: /opt/tidewise/reason-uat
+      UAT_RUNNER_NAME: ${{ vars.UAT_RUNNER_NAME }}
+      OFFICIAL_IMAGE: spg-registry.cn-hangzhou.cr.aliyuncs.com/spg/openspg-server:latest
+      OPENSPG_MYSQL_ROOT_PASSWORD: ${{ secrets.OPENSPG_MYSQL_ROOT_PASSWORD }}
+      OPENSPG_JASYPT_PASSWORD: ${{ secrets.OPENSPG_JASYPT_PASSWORD }}
+      OPENSPG_MINIO_ACCESS_KEY: ${{ secrets.OPENSPG_MINIO_ACCESS_KEY }}
+      OPENSPG_MINIO_SECRET_KEY: ${{ secrets.OPENSPG_MINIO_SECRET_KEY }}
+      OPENSPG_NEO4J_USER: ${{ vars.OPENSPG_NEO4J_USER }}
+      OPENSPG_NEO4J_PASSWORD: ${{ secrets.OPENSPG_NEO4J_PASSWORD }}
+      REASON_CONTENT_SOURCE: ${{ github.workspace }}/schemas
+      RELEASE_SHA: ${{ needs.resolve-release.outputs.commit_sha }}
+      RELEASE_ID: ${{ needs.resolve-release.outputs.commit_sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Checkout validated Reason release
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.resolve-release.outputs.commit_sha }}
+
+      - name: Pull and resolve the official OpenSPG Server image
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull "$OFFICIAL_IMAGE"
+          resolved="$(docker image inspect "$OFFICIAL_IMAGE" --format '{{index .RepoDigests 0}}')"
+          [[ "$resolved" =~ ^spg-registry\.cn-hangzhou\.cr\.aliyuncs\.com/spg/openspg-server@sha256:[0-9a-f]{64}$ ]] \
+            || { echo "official image did not resolve to a repository digest" >&2; exit 1; }
+          echo "resolved=$resolved" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare protected runtime inputs
+        id: runtime
+        env:
+          OPENSPG_SERVER_IMAGE: ${{ steps.image.outputs.resolved }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime="${RUNNER_TEMP}/tidewise-reason-uat-${GITHUB_RUN_ID}.env"
+          umask 077
+          printf '%s\n' \
+            "OPENSPG_SERVER_IMAGE=${OPENSPG_SERVER_IMAGE}" \
+            "OPENSPG_MYSQL_ROOT_PASSWORD=${OPENSPG_MYSQL_ROOT_PASSWORD}" \
+            "OPENSPG_JASYPT_PASSWORD=${OPENSPG_JASYPT_PASSWORD}" \
+            "OPENSPG_MINIO_ACCESS_KEY=${OPENSPG_MINIO_ACCESS_KEY}" \
+            "OPENSPG_MINIO_SECRET_KEY=${OPENSPG_MINIO_SECRET_KEY}" \
+            "OPENSPG_NEO4J_USER=${OPENSPG_NEO4J_USER}" \
+            "OPENSPG_NEO4J_PASSWORD=${OPENSPG_NEO4J_PASSWORD}" \
+            "OPENSPG_WEB_PORT=8887" > "$runtime"
+          echo "runtime=$runtime" >> "$GITHUB_OUTPUT"
+
+      - name: Preflight Reason and external infrastructure
+        env:
+          RUNTIME_ENV: ${{ steps.runtime.outputs.runtime }}
+          COMPOSE_FILE: ${{ github.workspace }}/infra/uat/compose.yaml
+        run: infra/uat/preflight.sh
+
+      - name: Deploy and verify only Reason Server
+        env:
+          RUNTIME_ENV: ${{ steps.runtime.outputs.runtime }}
+          COMPOSE_FILE: ${{ github.workspace }}/infra/uat/compose.yaml
+        run: infra/uat/deploy.sh
+
+      - name: Collect sanitized diagnostics
+        id: diagnostics
+        if: failure() && steps.runtime.outcome == 'success'
+        env:
+          RUNTIME_ENV: ${{ steps.runtime.outputs.runtime }}
+          COMPOSE_FILE: ${{ github.workspace }}/infra/uat/compose.yaml
+        shell: bash
+        run: |
+          output="${RUNNER_TEMP}/reason-uat-diagnostics-${GITHUB_RUN_ID}.log"
+          infra/uat/collect-diagnostics.sh > "$output"
+          echo "file=$output" >> "$GITHUB_OUTPUT"
+
+      - name: Upload sanitized diagnostics
+        if: failure() && steps.diagnostics.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: reason-uat-diagnostics-${{ github.run_id }}
+          path: ${{ steps.diagnostics.outputs.file }}
+          retention-days: 7
+
+      - name: Remove temporary protected files
+        if: always()
+        shell: bash
+        run: |
+          for path in "${{ steps.runtime.outputs.runtime }}" "${{ steps.diagnostics.outputs.file }}"; do
+            [ -z "$path" ] || rm -f -- "$path"
+          done

@@ -61,3 +61,9 @@ requires configuring a generation model and an embedding model in the product UI
 See [the local deployment design](docs/design/local-openspg-kag.md) and
 [the official runtime policy](docs/design/official-openspg-kag-runtime.md) for boundaries,
 extension seams and recovery.
+
+## UAT
+
+UAT deploys only the official OpenSPG Server/KAG runtime and Tidewise Reasoning-owned content. It
+consumes MySQL, Neo4j and MinIO managed independently by `tidewise-ai`, and never changes their
+lifecycle. See [the Reason UAT deployment contract](infra/uat/README.md).

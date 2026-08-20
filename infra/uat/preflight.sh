@@ -99,7 +99,6 @@ pass office-allowlisted-web-port
 
 docker run --rm -i \
   --network tidewise-uat \
-  --add-host release-openspg-neo4j:host-gateway \
   --env-file "$runtime_env" \
   --entrypoint python \
   "$OPENSPG_SERVER_IMAGE" - <<'PY'
@@ -180,10 +179,23 @@ auth = (os.environ["OPENSPG_NEO4J_USER"], os.environ["OPENSPG_NEO4J_PASSWORD"])
 with GraphDatabase.driver(uri, auth=auth) as driver:
     driver.verify_connectivity()
     with driver.session(database="neo4j") as session:
-        version = session.run("RETURN gds.version() AS version").single()["version"]
-        if version != "2.13.4":
-            raise RuntimeError(f"expected GDS 2.13.4, got {version}")
+        component = session.run(
+            "CALL dbms.components() YIELD name, versions "
+            "WHERE name = 'Neo4j Kernel' RETURN versions[0] AS version"
+        ).single(strict=True)
+        neo4j_version = component["version"]
+        if neo4j_version != "5.25.1":
+            raise RuntimeError(f"expected Neo4j 5.25.1, got {neo4j_version}")
+        gds_version = session.run("RETURN gds.version() AS version").single(strict=True)["version"]
+        if gds_version != "2.12.0":
+            raise RuntimeError(f"expected GDS 2.12.0, got {gds_version}")
+        apoc_version = session.run("RETURN apoc.version() AS version").single(strict=True)["version"]
+        if apoc_version != "5.25.1":
+            raise RuntimeError(f"expected APOC 5.25.1, got {apoc_version}")
         session.run("RETURN 1 AS ok").single(strict=True)
-print(f"dependencies reachable; GDS {version}")
+print(
+    "dependencies reachable; "
+    f"Neo4j {neo4j_version}, GDS {gds_version}, APOC {apoc_version}"
+)
 PY
-pass external-mysql-minio-neo4j-gds
+pass external-mysql-minio-openspg-neo4j

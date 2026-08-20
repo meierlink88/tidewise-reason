@@ -50,13 +50,10 @@ assert service["ports"] == [
 assert set(service["networks"]) == {"tidewise-uat"}
 assert config["networks"]["tidewise-uat"]["external"] is True
 assert config["networks"]["tidewise-uat"]["name"] == "tidewise-uat"
-extra_hosts = service["extra_hosts"]
-if isinstance(extra_hosts, dict):
-    assert extra_hosts["release-openspg-neo4j"] == "host-gateway"
-else:
-    assert "release-openspg-neo4j=host-gateway" in extra_hosts
+assert "extra_hosts" not in service
 command = "\n".join(service["command"])
 assert "--cloudext.objectstorage.url=minio://minio:9000?" in command
+assert "neo4j://release-openspg-neo4j:7687?" in command
 assert "--jasypt.encryptor.password=" in command
 assert not any("--remove-orphans" in item for item in service.get("command", []))
 PY
@@ -83,5 +80,12 @@ grep -q 'uses: actions/download-artifact@' "$workflow_file"
 grep -q 'sha256sum --check reason-release.tar.gz.sha256' "$workflow_file"
 [ "$(grep -c 'uses: actions/checkout@' "$workflow_file")" -eq 1 ]
 grep -q 'knext project list' "$repo_root/infra/uat/verify.sh"
+grep -q 'expected Neo4j 5.25.1' "$repo_root/infra/uat/preflight.sh"
+grep -q 'expected GDS 2.12.0' "$repo_root/infra/uat/preflight.sh"
+grep -q 'expected APOC 5.25.1' "$repo_root/infra/uat/preflight.sh"
+if grep -q 'host-gateway' "$repo_root/infra/uat/compose.yaml" "$repo_root/infra/uat/preflight.sh"; then
+  echo "Reason must resolve the OpenSPG Neo4j provider through Docker DNS" >&2
+  exit 1
+fi
 
 echo "PASS UAT repository contract"

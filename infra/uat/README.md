@@ -16,7 +16,8 @@ backs up, restarts or rolls them back.
   `http://123.60.99.198:8887`.
 - MySQL: the external `mysql:3306` network alias.
 - MinIO: the external `minio:9000` network alias.
-- Neo4j: host-native Bolt through the `release-openspg-neo4j` host-gateway alias.
+- Neo4j: the independent OpenSPG-specialized provider at
+  `release-openspg-neo4j:7687` through Docker DNS.
 
 The official mutable `openspg-server:latest` tag is pulled for each candidate. The workflow resolves
 and records the pulled digest in the protected runtime file so deployment and rollback use the exact
@@ -31,9 +32,10 @@ Before Reason deploys, `tidewise-ai` must provide:
 
 1. A healthy `tidewise-uat` Docker network with reachable `mysql` and `minio` aliases and valid
    MinIO credentials.
-2. Host-native Neo4j reachable from `host-gateway:7687` with valid Reason credentials.
-3. A Neo4j GDS release compatible with the installed Neo4j release; `RETURN gds.version()` must
-   succeed in the `neo4j` database.
+2. The OpenSPG-specialized Neo4j provider reachable at `release-openspg-neo4j:7687` with valid
+   Reason credentials.
+3. The provider contract is exactly Neo4j `5.25.1`, OpenGDS `2.12.0`, and APOC `5.25.1`; the
+   OpenSPG project databases are independently owned and migrated by `tidewise-ai`.
 4. MySQL and the MinIO S3 API remain private. `tidewise-ai` independently owns the
    office-allowlisted Neo4j Browser/Bolt and MinIO Console ports; Reason only consumes their
    internal provider endpoints.
@@ -59,15 +61,15 @@ repository-scoped runner registered to `tidewise-ai`.
 
 Create an Environment named `uat` with:
 
-| Kind | Name | Purpose |
-| --- | --- | --- |
-| Variable | `UAT_RUNNER_NAME` | Exact name of the Reason repository Runner |
-| Variable | `OPENSPG_NEO4J_USER` | Dedicated Neo4j user for Reason |
-| Secret | `OPENSPG_MYSQL_ROOT_PASSWORD` | Password of the external OpenSPG MySQL database |
-| Secret | `OPENSPG_JASYPT_PASSWORD` | UAT-only encryption password for Server-managed configuration |
-| Secret | `OPENSPG_MINIO_ACCESS_KEY` | Access key of the external MinIO service |
-| Secret | `OPENSPG_MINIO_SECRET_KEY` | Secret key of the external MinIO service |
-| Secret | `OPENSPG_NEO4J_PASSWORD` | Password of the dedicated Neo4j user |
+| Kind     | Name                          | Purpose                                                       |
+| -------- | ----------------------------- | ------------------------------------------------------------- |
+| Variable | `UAT_RUNNER_NAME`             | Exact name of the Reason repository Runner                    |
+| Variable | `OPENSPG_NEO4J_USER`          | Dedicated Neo4j user for Reason                               |
+| Secret   | `OPENSPG_MYSQL_ROOT_PASSWORD` | Password of the external OpenSPG MySQL database               |
+| Secret   | `OPENSPG_JASYPT_PASSWORD`     | UAT-only encryption password for Server-managed configuration |
+| Secret   | `OPENSPG_MINIO_ACCESS_KEY`    | Access key of the external MinIO service                      |
+| Secret   | `OPENSPG_MINIO_SECRET_KEY`    | Secret key of the external MinIO service                      |
+| Secret   | `OPENSPG_NEO4J_PASSWORD`      | Password of the dedicated Neo4j user                          |
 
 Passwords must contain 24-64 URL-safe characters (`A-Z`, `a-z`, `0-9`, `_`, `-`) because OpenSPG
 receives the Neo4j credential in a connection URI. Never reuse the bundled local demo credentials.
@@ -77,7 +79,8 @@ receives the Neo4j credential in a connection URI. Never reuse the bundled local
 Dispatch **Deploy Reason UAT** from `main`. The selected commit must belong to `main` and have a
 successful **CI** run. The workflow serializes with all existing UAT deployment workflows through
 `/opt/tidewise/uat/deploy.lock`, pulls and resolves the official Server image, validates the external
-dependencies (including authenticated, read-only MinIO and exact GDS `2.13.4` checks), publishes
+dependencies (including authenticated, read-only MinIO and the exact OpenSPG Neo4j provider
+contract), publishes
 the versioned Reason Schema artifacts, deploys only `server`, then verifies:
 
 - container health and exact image ID;

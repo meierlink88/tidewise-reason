@@ -11,9 +11,6 @@ services:
     environment:
       TZ: Asia/Shanghai
       LANG: C.UTF-8
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-      - "release-openspg-neo4j:host-gateway"
     command:
       - java
       - -Dfile.encoding=UTF-8
@@ -29,7 +26,13 @@ services:
       - --cloudext.searchengine.url=neo4j://release-openspg-neo4j:7687?user=${OPENSPG_NEO4J_USER:?OPENSPG_NEO4J_USER is required}&password=${OPENSPG_NEO4J_PASSWORD:?OPENSPG_NEO4J_PASSWORD is required}&database=neo4j
       - --cloudext.objectstorage.url=minio://minio:9000?accessKey=${OPENSPG_MINIO_ACCESS_KEY:?OPENSPG_MINIO_ACCESS_KEY is required}&secretKey=${OPENSPG_MINIO_SECRET_KEY:?OPENSPG_MINIO_SECRET_KEY is required}
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8887/actuator/health', timeout=3)"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8887/actuator/health', timeout=3)",
+        ]
       interval: 10s
       timeout: 5s
       retries: 30

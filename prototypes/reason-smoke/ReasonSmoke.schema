@@ -1,0 +1,25 @@
+namespace ReasonSmoke
+
+Company(公司): EntityType
+    desc: 仅用于 OpenSPG + KAG 本地推理原型的虚构公司。
+    properties:
+        desc(描述): Text
+            index: TextAndVector
+    relations:
+        produces(生产): Product
+            desc: 公司生产的产品。
+
+Product(产品): EntityType
+    desc: 仅用于 OpenSPG + KAG 本地推理原型的虚构产品。
+    properties:
+        desc(描述): Text
+            index: TextAndVector
+    relations:
+        usesMaterial(原材料): Commodity
+            desc: 产品使用的主要原材料。
+
+Commodity(大宗商品): EntityType
+    desc: 仅用于 OpenSPG + KAG 本地推理原型的标准化商品。
+    properties:
+        desc(描述): Text
+            index: TextAndVector

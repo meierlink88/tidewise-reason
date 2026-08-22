@@ -1,7 +1,8 @@
-# OpenSPG Evaluation Context
+# Reasoning Evaluation Context
 
-This context evaluates how Tidewise investment-research semantics can be projected into OpenSPG
-without changing the authoritative Tidewise domain model.
+This context evaluates how Tidewise investment-research semantics can be projected into candidate
+graph and reasoning engines without changing the authoritative Tidewise domain model. OpenSPG is a
+retained, reversible evaluation; Graphiti is the active local evaluation.
 
 ## Language
 
@@ -71,3 +72,31 @@ _Avoid_: Company property, metric definition, investment conclusion
 A one-hop analytical assertion from a source Variable Signal to a target entity's controlled
 variable, with explicit mechanism and optional approved rule identity.
 _Avoid_: Event fact, graph relation, security-price conclusion
+
+**Evidence**:
+An immutable, source-addressable factual record used to support or contradict an Event or Signal.
+_Avoid_: LLM conclusion, graph-only summary, unsupported market opinion
+
+**Research Event**:
+A time-scoped factual occurrence extracted from one or more Evidence records before downstream
+interpretation. Its source time and ingestion time remain distinct.
+_Avoid_: Variable Signal, forecast, investment conclusion
+
+**Analysis Anchor**:
+The stable entity or story line whose connected nodes define the bounded scope of one analysis.
+_Avoid_: User prompt, temporary result, unbounded graph traversal
+
+**Analysis Result**:
+A reproducible, time-stamped interpretation produced from a declared question, retrieved graph
+context, Evidence and Variable Signals. It is not silently promoted to a new fact.
+_Avoid_: Evidence, Research Event, permanent entity attribute
+
+**Ontology Catalog**:
+The versioned, authoritative set of entity types, relation signatures and field contracts used to
+constrain extraction and to provide a task-specific Schema subset during analysis.
+_Avoid_: All graph instances, generated Cypher, unversioned prompt text
+
+**Analysis Context**:
+The reproducible task input assembled from one question, anchor, as-of time, horizon, selected
+Ontology fragment, temporally eligible facts, Evidence provenance and explicit validation issues.
+_Avoid_: Final conclusion, unbounded graph dump, provider-specific search response

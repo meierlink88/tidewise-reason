@@ -126,22 +126,24 @@ class EvidenceEpisodeDeliveryStore:
             connection.execute("BEGIN IMMEDIATE")
             row = connection.execute(
                 """
-                SELECT evidence_id, payload_json
+                SELECT evidence_id, payload_json, status, next_attempt_at, lease_until
                 FROM evidence_episode_deliveries
-                WHERE (
-                    status = 'ACCEPTED'
-                    AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
-                ) OR (
-                    status = 'PROCESSING'
-                    AND lease_until IS NOT NULL
-                    AND lease_until <= ?
-                )
+                WHERE status IN ('ACCEPTED', 'PROCESSING')
                 ORDER BY reference_time, evidence_id
                 LIMIT 1
                 """,
-                (now_text, now_text),
             ).fetchone()
             if row is None:
+                return None
+            if row["status"] == "ACCEPTED" and (
+                row["next_attempt_at"] is not None
+                and datetime.fromisoformat(row["next_attempt_at"]) > now
+            ):
+                return None
+            if row["status"] == "PROCESSING" and (
+                row["lease_until"] is None
+                or datetime.fromisoformat(row["lease_until"]) > now
+            ):
                 return None
             connection.execute(
                 """

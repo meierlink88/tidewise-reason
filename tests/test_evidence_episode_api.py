@@ -87,6 +87,8 @@ class EvidenceEpisodeAPITest(unittest.TestCase):
         invalid_provenance = evidence().model_dump(mode="json")
         invalid_provenance["is_original"] = False
         invalid_provenance["quoted_source_name"] = None
+        numeric_timestamp = evidence().model_dump(mode="json")
+        numeric_timestamp["collected_at"] = 0
 
         coerced_response = self.client.post(
             "/api/reason/v1/evidence-episodes",
@@ -98,9 +100,15 @@ class EvidenceEpisodeAPITest(unittest.TestCase):
             headers=self.headers,
             json={"evidences": [invalid_provenance]},
         )
+        timestamp_response = self.client.post(
+            "/api/reason/v1/evidence-episodes",
+            headers=self.headers,
+            json={"evidences": [numeric_timestamp]},
+        )
 
         self.assertEqual(coerced_response.status_code, 422, coerced_response.text)
         self.assertEqual(provenance_response.status_code, 422, provenance_response.text)
+        self.assertEqual(timestamp_response.status_code, 422, timestamp_response.text)
 
     def test_same_evidence_is_an_idempotent_duplicate(self) -> None:
         payload = {"evidences": [evidence().model_dump(mode="json")]}

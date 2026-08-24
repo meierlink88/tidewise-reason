@@ -89,6 +89,33 @@ class EvidenceEpisodeWorkerTest(unittest.TestCase):
         self.assertEqual(final_status.status, "SUCCEEDED")
         self.assertEqual(final_status.attempt_count, 2)
 
+    def test_retry_backoff_blocks_later_reference_times_from_overtaking(self) -> None:
+        writer = RecordingWriter(failures=1)
+        module = EvidenceEpisodeModule(
+            self.store,
+            writer=writer,
+            max_attempts=2,
+            retry_delay_seconds=60,
+        )
+        earlier = evidence().model_copy(
+            update={
+                "id": SECOND_ID,
+                "published_at": datetime(2026, 8, 25, 7, 30, tzinfo=UTC),
+            }
+        )
+        later = evidence()
+        module.accept([later, earlier])
+
+        first = asyncio.run(module.process_pending(limit=10))
+
+        self.assertEqual(first.retry_ids, [SECOND_ID])
+        self.assertEqual(writer.episodes[0].name, SECOND_ID)
+        later_status = module.get_status(EVIDENCE_ID)
+        self.assertIsNotNone(later_status)
+        assert later_status is not None
+        self.assertEqual(later_status.status, "ACCEPTED")
+        self.assertEqual(later_status.attempt_count, 0)
+
     def test_retry_limit_moves_evidence_to_failed(self) -> None:
         writer = RecordingWriter(failures=2)
         module = EvidenceEpisodeModule(

@@ -16,18 +16,19 @@ set +a
 require_reason_api_token
 
 api_port="${REASON_API_PORT:-8890}"
-data_url="${TIDEWISE_DATA_BASE_URL%/}/api/data/v1/evidences?page=1&page_size=1"
+anchor_name='人工智能'
+data_url="${TIDEWISE_DATA_BASE_URL%/}/api/data/v1/evidences?page=1&page_size=100"
 evidence_response="$(
   curl --fail --silent --show-error \
     -H "Authorization: Bearer ${TIDEWISE_DATA_SERVICE_TOKEN}" \
     "$data_url"
 )"
 evidence_id="$(
-  python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["items"][0]["id"])' \
+  ANCHOR_NAME="$anchor_name" python3 -c 'import json,os,sys; items=json.load(sys.stdin)["result"]["items"]; item=next(value for value in items if os.environ["ANCHOR_NAME"] in json.dumps(value, ensure_ascii=False)); print(item["id"])' \
     <<<"$evidence_response"
 )"
 request_body="$(
-  python3 -c 'import json,sys; data=json.load(sys.stdin); print(json.dumps({"evidences": [data["result"]["items"][0]]}, ensure_ascii=False, separators=(",", ":")))' \
+  ANCHOR_NAME="$anchor_name" python3 -c 'import json,os,sys; items=json.load(sys.stdin)["result"]["items"]; item=next(value for value in items if os.environ["ANCHOR_NAME"] in json.dumps(value, ensure_ascii=False)); print(json.dumps({"evidences": [item]}, ensure_ascii=False, separators=(",", ":")))' \
     <<<"$evidence_response"
 )"
 
@@ -70,9 +71,9 @@ verification="$(
     EVIDENCE_ID="$evidence_id" EPISODE_UUID="$episode_uuid" \
     ${compose[@]} exec -T \
       -e NEO4J_USERNAME -e NEO4J_PASSWORD -e EVIDENCE_ID -e EPISODE_UUID neo4j \
-      bash -c 'cypher-shell -u "$NEO4J_USERNAME" -p "$NEO4J_PASSWORD" "MATCH (episode:Episodic {name: '\''$EVIDENCE_ID'\'', uuid: '\''$EPISODE_UUID'\'', group_id: '\''neo4j'\''}) RETURN count(episode) AS episodes, coalesce(episode.tidewise_ingestion_complete, false) AS complete"' \
+      bash -c 'cypher-shell -u "$NEO4J_USERNAME" -p "$NEO4J_PASSWORD" "MATCH (episode:Episodic {name: '\''$EVIDENCE_ID'\'', uuid: '\''$EPISODE_UUID'\'', group_id: '\''neo4j'\''}) OPTIONAL MATCH (episode)-[:MENTIONS]->(anchor:Concept {name: '\''人工智能'\''}) WHERE anchor.data_object_id IS NOT NULL RETURN count(DISTINCT episode) AS episodes, coalesce(episode.tidewise_ingestion_complete, false) AS complete, count(DISTINCT anchor) AS canonical_anchors"' \
       | tail -n 1
 )"
-[ "$verification" = '1, TRUE' ] || [ "$verification" = '1, true' ]
+[ "$verification" = '1, TRUE, 1' ] || [ "$verification" = '1, true, 1' ]
 
-echo "PASS published Evidence $evidence_id traversed Reason API, Graphiti and Neo4j"
+echo "PASS published Evidence $evidence_id resolved canonical $anchor_name through Reason, Graphiti and Neo4j"

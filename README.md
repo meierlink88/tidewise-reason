@@ -150,8 +150,9 @@ bash infra/graphiti/stop-api.sh
 
 The API binds to <http://127.0.0.1:8890> by default. Its delivery state is stored in the dedicated
 `tidewise-reason_graphiti-api-state` volume; stopping the service does not delete that volume.
-The live Evidence check is idempotent: it selects one already-published Data Service Evidence and
-verifies the resulting completed Episodic node instead of creating a synthetic fact.
+The live Evidence check is idempotent: it selects an already-published Data Service Evidence that
+mentions the projected `人工智能` Concept, then verifies both the completed Episodic node and its
+`MENTIONS` link to that canonical `data_object_id` instead of creating a synthetic fact.
 
 ## UAT
 

@@ -68,6 +68,13 @@ class EvidenceDTO(BaseModel):
     published_at: datetime | None
     collected_at: datetime
 
+    @field_validator("published_at", "collected_at", mode="before")
+    @classmethod
+    def timestamps_must_be_text_or_datetime(cls, value: object) -> object:
+        if value is not None and not isinstance(value, (str, datetime)):
+            raise ValueError("Evidence timestamps must be explicit RFC3339 values")
+        return value
+
     @field_validator("published_at", "collected_at")
     @classmethod
     def timestamps_must_be_explicit_utc(cls, value: datetime | None) -> datetime | None:

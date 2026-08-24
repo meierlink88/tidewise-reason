@@ -38,13 +38,14 @@ await graphiti.add_episode(
     episode_body=evidence_json,
     source_description="Tidewise Atomic Evidence",
     reference_time=reference_time,
-    group_id="evidence-curation",
+    group_id="neo4j",
     entity_types=ENTITY_TYPES,
     edge_types=EDGE_TYPES,
     edge_type_map=EDGE_TYPE_MAP,
 )
 ```
 
-Canonical Entity and stable Link facts are projected once into the target `group_id`. Each Evidence
+Canonical Entity and stable Link facts are projected once into the real Neo4j Community `neo4j`
+group. Each Evidence
 call contains only the current Evidence Episode. Future foundation, Evidence and Event adapters may
 select smaller catalog subsets; they must not copy every graph fact into every Episode.

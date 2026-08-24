@@ -99,7 +99,7 @@ bash scripts/project-country-regions.sh verify
 ```
 
 The implementation lives in [`projection/`](projection/). It uses stable Tidewise Data IDs,
-deterministic Graphiti UUIDs and the fixed `tidewise-investment-research` group. Canonical facts use
+deterministic Graphiti UUIDs and the fixed Neo4j Community `neo4j` group. Canonical facts use
 Graphiti's public `nodes.entity.save_bulk` / `edges.entity.save_bulk` Namespace APIs and embeddings
 but deliberately bypass LLM entity resolution, so same-name entities of different authoritative
 types cannot merge. A limited run is only a provider
@@ -124,8 +124,31 @@ bash scripts/project-concepts.sh run --replace
 bash scripts/project-concepts.sh verify
 ```
 
-Both use scoped replacement within the shared `tidewise-investment-research` group. They preserve
+Both use scoped replacement within the shared `neo4j` group. They preserve
 Country, Region and `CountryInRegion` facts, and do not infer an Industry-to-Concept relationship.
+
+## Evidence Episode Ingestion
+
+Agent OS can push complete, already-published Atomic Evidence to the standalone Reason ingestion
+API. The feature-local implementation is under [`ingestion/episcode/evidence/`](ingestion/episcode/evidence/):
+
+```text
+POST /api/reason/v1/evidence-episodes
+GET  /api/reason/v1/evidence-episodes/{evidence_id}
+```
+
+The POST body contains only `evidences` and accepts 1–50 complete Evidence records. Acceptance is
+asynchronous and idempotent by formal Evidence ID. Configure `REASON_API_SERVICE_TOKEN` in the
+private mode-`0600` runtime environment, then use only the service-scoped commands:
+
+```bash
+bash infra/graphiti/start-api.sh
+bash infra/graphiti/verify-api.sh
+bash infra/graphiti/stop-api.sh
+```
+
+The API binds to <http://127.0.0.1:8890> by default. Its delivery state is stored in the dedicated
+`tidewise-reason_graphiti-api-state` volume; stopping the service does not delete that volume.
 
 ## UAT
 

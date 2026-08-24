@@ -9,11 +9,13 @@ import stat
 from pathlib import Path
 
 from graphiti_core import Graphiti
+from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
 from graphiti_core.embedder.openai import OpenAIEmbedder, OpenAIEmbedderConfig
 from graphiti_core.llm_client.config import LLMConfig
 from graphiti_core.llm_client.openai_generic_client import OpenAIGenericClient
 from pydantic import (
     AnyHttpUrl,
+    AnyUrl,
     BaseModel,
     ConfigDict,
     Field,
@@ -26,14 +28,24 @@ from pydantic import (
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_ENV_FILE = REPO_ROOT / ".runtime" / "graphiti.env"
 ENV_KEY = re.compile(r"^[A-Z][A-Z0-9_]*$")
+GRAPHITI_GROUP_ID = "neo4j"
+REASON_SERVICE_ENV_KEYS = frozenset(
+    {
+        "REASON_API_PORT",
+        "REASON_API_SERVICE_TOKEN",
+        "REASON_STATE_PATH",
+        "REASON_WORKER_POLL_INTERVAL_SECONDS",
+        "REASON_WORKER_BATCH_SIZE",
+    }
+)
 
 
 class ProjectionError(RuntimeError):
     """A fail-closed projection configuration or data-contract error."""
 
 
-class RuntimeConfig(BaseModel):
-    """Runtime values shared by Graphiti and the Tidewise Data API client."""
+class GraphitiProviderConfig(BaseModel):
+    """Provider values shared by authoritative projections and Episode ingestion."""
 
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
 
@@ -41,6 +53,7 @@ class RuntimeConfig(BaseModel):
     neo4j_password: SecretStr = Field(alias="NEO4J_PASSWORD")
     neo4j_bolt_port: int = Field(alias="NEO4J_BOLT_PORT", ge=1, le=65535)
     neo4j_http_port: int = Field(alias="NEO4J_HTTP_PORT", ge=1, le=65535)
+    neo4j_uri_override: AnyUrl | None = Field(default=None, alias="NEO4J_URI")
     graphiti_llm_api_key: SecretStr = Field(alias="GRAPHITI_LLM_API_KEY")
     graphiti_llm_base_url: AnyHttpUrl = Field(alias="GRAPHITI_LLM_BASE_URL")
     graphiti_llm_model: str = Field(alias="GRAPHITI_LLM_MODEL", min_length=1)
@@ -48,14 +61,11 @@ class RuntimeConfig(BaseModel):
     graphiti_embedding_base_url: AnyHttpUrl = Field(alias="GRAPHITI_EMBEDDING_BASE_URL")
     graphiti_embedding_model: str = Field(alias="GRAPHITI_EMBEDDING_MODEL", min_length=1)
     graphiti_embedding_dim: int = Field(alias="GRAPHITI_EMBEDDING_DIM", ge=1, le=65536)
-    tidewise_data_base_url: AnyHttpUrl = Field(alias="TIDEWISE_DATA_BASE_URL")
-    tidewise_data_service_token: SecretStr = Field(alias="TIDEWISE_DATA_SERVICE_TOKEN")
 
     @field_validator(
         "neo4j_password",
         "graphiti_llm_api_key",
         "graphiti_embedding_api_key",
-        "tidewise_data_service_token",
     )
     @classmethod
     def secret_must_not_be_blank(cls, value: SecretStr) -> SecretStr:
@@ -65,7 +75,23 @@ class RuntimeConfig(BaseModel):
 
     @property
     def neo4j_uri(self) -> str:
+        if self.neo4j_uri_override is not None:
+            return str(self.neo4j_uri_override).rstrip("/")
         return f"bolt://127.0.0.1:{self.neo4j_bolt_port}"
+
+
+class RuntimeConfig(GraphitiProviderConfig):
+    """Runtime values shared by Graphiti and the Tidewise Data API client."""
+
+    tidewise_data_base_url: AnyHttpUrl = Field(alias="TIDEWISE_DATA_BASE_URL")
+    tidewise_data_service_token: SecretStr = Field(alias="TIDEWISE_DATA_SERVICE_TOKEN")
+
+    @field_validator("tidewise_data_service_token")
+    @classmethod
+    def data_service_secret_must_not_be_blank(cls, value: SecretStr) -> SecretStr:
+        if not value.get_secret_value().strip():
+            raise ValueError("secret must not be blank")
+        return value
 
 
 def _parse_env(path: Path) -> dict[str, str]:
@@ -91,8 +117,15 @@ def _parse_env(path: Path) -> dict[str, str]:
 def load_config(path: Path | None = None) -> RuntimeConfig:
     """Load the private runtime file without exporting credentials to child processes."""
 
+    values = _parse_env(path or DEFAULT_ENV_FILE)
+    declared = {field.alias for field in RuntimeConfig.model_fields.values()}
+    unknown = set(values).difference(declared, REASON_SERVICE_ENV_KEYS)
+    if unknown:
+        raise ProjectionError(f"invalid runtime fields: {', '.join(sorted(unknown))}")
     try:
-        return RuntimeConfig.model_validate(_parse_env(path or DEFAULT_ENV_FILE))
+        return RuntimeConfig.model_validate(
+            {key: value for key, value in values.items() if key in declared}
+        )
     except ValidationError as exc:
         fields = sorted({str(item["loc"][0]) for item in exc.errors()})
         raise ProjectionError(f"invalid runtime fields: {', '.join(fields)}") from None
@@ -131,7 +164,7 @@ class DeepSeekCompatibleClient(OpenAIGenericClient):
         return normalized
 
 
-def create_graphiti(config: RuntimeConfig) -> Graphiti:
+def create_graphiti(config: GraphitiProviderConfig) -> Graphiti:
     """Compose pinned Graphiti with the configured Neo4j, LLM and embedder providers."""
 
     llm_config = LLMConfig(
@@ -159,5 +192,6 @@ def create_graphiti(config: RuntimeConfig) -> Graphiti:
                 embedding_dim=config.graphiti_embedding_dim,
             )
         ),
+        cross_encoder=OpenAIRerankerClient(config=llm_config),
         max_coroutines=2,
     )

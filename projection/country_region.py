@@ -236,6 +236,7 @@ async def inspect_graph_state(graphiti: Graphiti) -> dict[str, object]:
     node_result = await graphiti.driver.execute_query(
         """
         MATCH (n:Entity {group_id: $group_id})
+        WHERE n:Country OR n:Region
         RETURN n.uuid AS uuid, n.data_object_id AS data_object_id, labels(n) AS labels,
                CASE WHEN n:Country THEN 'Country'
                     WHEN n:Region THEN 'Region'
@@ -246,7 +247,8 @@ async def inspect_graph_state(graphiti: Graphiti) -> dict[str, object]:
     )
     edge_result = await graphiti.driver.execute_query(
         """
-        MATCH (source:Entity {group_id: $group_id})-[r:RELATES_TO]->(target:Entity)
+        MATCH (source:Country {group_id: $group_id})-[r:RELATES_TO]->(target:Region)
+        WHERE r.name = 'CountryInRegion'
         RETURN r.uuid AS uuid, r.name AS name,
                source.data_object_id AS source_id,
                target.data_object_id AS target_id,

@@ -23,6 +23,49 @@ services:
       retries: 30
     networks: [tidewise-local]
 
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/ingestion/Dockerfile
+    image: tidewise-reason-ingestion:graphiti-0.29.3
+    container_name: reason-graphiti-api
+    restart: unless-stopped
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:${REASON_API_PORT:-8890}:8890'
+    environment:
+      NEO4J_USER: '${NEO4J_USER:?NEO4J_USER is required}'
+      NEO4J_PASSWORD: '${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}'
+      NEO4J_HTTP_PORT: '7474'
+      NEO4J_BOLT_PORT: '7687'
+      NEO4J_URI: 'bolt://neo4j:7687'
+      GRAPHITI_LLM_API_KEY: '${GRAPHITI_LLM_API_KEY:?GRAPHITI_LLM_API_KEY is required}'
+      GRAPHITI_LLM_BASE_URL: '${GRAPHITI_LLM_BASE_URL:?GRAPHITI_LLM_BASE_URL is required}'
+      GRAPHITI_LLM_MODEL: '${GRAPHITI_LLM_MODEL:?GRAPHITI_LLM_MODEL is required}'
+      GRAPHITI_EMBEDDING_API_KEY: '${GRAPHITI_EMBEDDING_API_KEY:?GRAPHITI_EMBEDDING_API_KEY is required}'
+      GRAPHITI_EMBEDDING_BASE_URL: '${GRAPHITI_EMBEDDING_BASE_URL:?GRAPHITI_EMBEDDING_BASE_URL is required}'
+      GRAPHITI_EMBEDDING_MODEL: '${GRAPHITI_EMBEDDING_MODEL:?GRAPHITI_EMBEDDING_MODEL is required}'
+      GRAPHITI_EMBEDDING_DIM: '${GRAPHITI_EMBEDDING_DIM:?GRAPHITI_EMBEDDING_DIM is required}'
+      REASON_API_SERVICE_TOKEN: '${REASON_API_SERVICE_TOKEN:-}'
+      REASON_STATE_PATH: '/var/lib/tidewise-reason/state.sqlite3'
+      REASON_WORKER_POLL_INTERVAL_SECONDS: '${REASON_WORKER_POLL_INTERVAL_SECONDS:-1}'
+      REASON_WORKER_BATCH_SIZE: '${REASON_WORKER_BATCH_SIZE:-5}'
+    volumes:
+      - graphiti-api-state:/var/lib/tidewise-reason
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8890/readyz', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks: [tidewise-local]
+
 networks:
   tidewise-local:
     external: true
@@ -33,3 +76,5 @@ volumes:
     name: tidewise-reason_graphiti-neo4j-data
   graphiti-neo4j-logs:
     name: tidewise-reason_graphiti-neo4j-logs
+  graphiti-api-state:
+    name: tidewise-reason_graphiti-api-state

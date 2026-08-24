@@ -13,14 +13,17 @@ the former OpenSPG ABox is no longer locally recoverable from those volumes.
 
 ## Runtime boundaries
 
-- The Compose project is `tidewise-reasoning` and the sole service is `neo4j`.
+- The Compose project is `tidewise-reasoning`; `neo4j` owns the graph provider and `api` owns
+  Evidence Episode ingestion.
 - Ports 7474 and 7687 bind to loopback.
 - The image and Graphiti package are version pinned.
 - The Python environment, model credentials, Data Service credential, Graphiti data and generated
   analysis artifacts stay outside Git.
 - MySQL and MinIO remain owned by `tidewise-infra`.
-- Atomic Evidence will be read only through Data Service's versioned `/api/data/v1/evidences`
-  contract; Reason does not enter another service's database or container.
+- For the original evaluation CLI, Atomic Evidence is read through Data Service's versioned API.
+  For the accepted ingestion path, Agent OS pushes the complete record to Reason only after Data
+  publication; Reason never enters another service's database or container. ADR 0002 owns this
+  newer boundary.
 - This local decision does not alter the UAT OpenSPG-specialized Neo4j provider.
 
 Graphiti requires Neo4j 5.26 or later. Neo4j 5.26 is selected over FalkorDB for this first PoC to
@@ -38,8 +41,10 @@ does not own entity facts, and a caller selects the smallest applicable Entity/L
 foundation projection, Evidence ingestion or Event ingestion. Evidence remains an Episode rather
 than a custom Entity.
 
-The authoritative cross-service timeout, retry, error, compatibility and recovery decisions are
-frozen in [ADR 0001](../adr/0001-use-graphiti-for-local-temporal-memory-evaluation.md).
+The original evaluation contract is frozen in
+[ADR 0001](../adr/0001-use-graphiti-for-local-temporal-memory-evaluation.md); published Evidence
+Episode delivery is frozen in
+[ADR 0002](../adr/0002-ingest-published-evidence-as-graphiti-episodes.md).
 
 ## Lifecycle
 
@@ -56,8 +61,11 @@ chmod 0600 .runtime/graphiti.env
 bash scripts/install-graphiti-runtime.sh
 bash infra/graphiti/start.sh
 bash infra/graphiti/verify.sh
+bash infra/graphiti/start-api.sh
+bash infra/graphiti/verify-api.sh
 bash scripts/verify-graphiti-contract.sh
 bash scripts/test-ontology.sh
+bash infra/graphiti/stop-api.sh
 bash infra/graphiti/stop.sh
 ```
 

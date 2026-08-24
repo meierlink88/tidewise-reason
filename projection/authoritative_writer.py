@@ -9,10 +9,10 @@ from graphiti_core import Graphiti
 from graphiti_core.edges import EntityEdge
 from graphiti_core.nodes import EntityNode
 
-from projection.runtime import ProjectionError
+from projection.runtime import GRAPHITI_GROUP_ID, ProjectionError
 
 
-GROUP_ID = "tidewise-investment-research"
+GROUP_ID = GRAPHITI_GROUP_ID
 EMBEDDING_BATCH_SIZE = 10
 
 

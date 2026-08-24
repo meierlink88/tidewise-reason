@@ -10,6 +10,6 @@ uv_bin="${UV_BIN:-$(command -v uv || true)}"
 
 "$uv_bin" venv --python 3.12.11 "$runtime_root"
 "$uv_bin" pip install --python "$runtime_root/bin/python" \
-  --require-hashes -r "$repo_root/graphiti_demo/requirements.lock"
+  --require-hashes -r "$repo_root/ontology/requirements.lock"
 "$runtime_root/bin/python" -c \
   "import importlib.metadata, sys; assert sys.version_info[:3] == (3, 12, 11); assert importlib.metadata.version('graphiti-core') == '0.29.3'"

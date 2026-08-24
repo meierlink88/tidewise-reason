@@ -13,14 +13,17 @@ the former OpenSPG ABox is no longer locally recoverable from those volumes.
 
 ## Runtime boundaries
 
-- The Compose project is `tidewise-reasoning` and the sole service is `neo4j`.
+- The Compose project is `tidewise-reasoning`; `neo4j` owns the graph provider and `api` owns
+  Evidence Episode ingestion.
 - Ports 7474 and 7687 bind to loopback.
 - The image and Graphiti package are version pinned.
 - The Python environment, model credentials, Data Service credential, Graphiti data and generated
   analysis artifacts stay outside Git.
 - MySQL and MinIO remain owned by `tidewise-infra`.
-- Atomic Evidence is read only through Data Service's versioned `/api/data/v1/evidences` contract;
-  the demo does not enter another service's database or container.
+- For the original evaluation CLI, Atomic Evidence is read through Data Service's versioned API.
+  For the accepted ingestion path, Agent OS pushes the complete record to Reason only after Data
+  publication; Reason never enters another service's database or container. ADR 0002 owns this
+  newer boundary.
 - This local decision does not alter the UAT OpenSPG-specialized Neo4j provider.
 
 Graphiti requires Neo4j 5.26 or later. Neo4j 5.26 is selected over FalkorDB for this first PoC to
@@ -29,36 +32,19 @@ tooling ecosystem. This is not a claim that Neo4j is always faster than FalkorDB
 
 ## Data contract
 
-The demo keeps these concepts separate:
+The retired liquid-cooling demo has been removed. The formal `ontology` package now owns the
+versioned Graphiti extraction types. Its first Evidence Curation version contains Country, Region,
+Organization, Industry, Concept, IndustryChain and ChainNode plus their stable foundation links.
 
-1. `Evidence` is the immutable source record.
-2. `ResearchEvent` is the time-scoped occurrence extracted from evidence.
-3. `VariableSignal` is a derived, time-bounded interpretation linked to a stable chain node.
-4. `AnalysisResult` records the question, as-of time, retrieved context and conclusion; it is not
-   silently treated as new evidence.
+The Ontology Catalog is a consumer extraction contract derived from Tidewise Data definitions. It
+does not own entity facts, and a caller selects the smallest applicable Entity/Link subset for a
+foundation projection, Evidence ingestion or Event ingestion. Evidence remains an Episode rather
+than a custom Entity.
 
-Graphiti supplies temporal graph memory and retrieval. The domain analysis pipeline still owns
-scope selection, horizon filtering, evidence conflict handling and the final LLM reasoning prompt.
-
-Pydantic types are the versioned local Ontology Catalog. They constrain ingestion, and the pipeline
-exports their JSON Schema plus relation endpoint signatures into the Analysis Context. A production
-selector should include only the types related to the detected anchor; this bounded demo includes
-its complete five-entity/seven-relation catalog because all types are relevant.
-
-Episode identities are UUIDv5 values derived from a fixed namespace and Evidence identities. A
-plain `seed` clears and rebuilds only the dedicated `neo4j` Graphiti group; `seed --reset` clears the
-entire dedicated local evaluation database. Generated context and result artifacts carry the same
-content-derived run ID, graph fingerprint and Episode set, so verification rejects stale output.
-Every node result must structurally cite its Evidence, Episode, ResearchEvent and VariableSignal;
-free-text transmission paths are not accepted as the provenance contract.
-
-The authoritative cross-service timeout, retry, error, compatibility and recovery decisions are
-frozen in [ADR 0001](../adr/0001-use-graphiti-for-local-temporal-memory-evaluation.md).
-
-The first DeepSeek V4 Flash compatibility run keeps custom entity and edge type labels but does not
-ask Graphiti to persist custom Pydantic properties. The provider returned JSON Schema descriptions
-as nested property values, which Neo4j correctly rejected. Direction, horizon and mechanism remain
-in Episode content and extracted fact text until a validated structured-output adapter is added.
+The original evaluation contract is frozen in
+[ADR 0001](../adr/0001-use-graphiti-for-local-temporal-memory-evaluation.md); published Evidence
+Episode delivery is frozen in
+[ADR 0002](../adr/0002-ingest-published-evidence-as-graphiti-episodes.md).
 
 ## Lifecycle
 
@@ -75,12 +61,11 @@ chmod 0600 .runtime/graphiti.env
 bash scripts/install-graphiti-runtime.sh
 bash infra/graphiti/start.sh
 bash infra/graphiti/verify.sh
+bash infra/graphiti/start-api.sh
+bash infra/graphiti/verify-api.sh
 bash scripts/verify-graphiti-contract.sh
-bash scripts/test-graphiti-demo.sh
-bash scripts/graphiti-demo.sh evidence-smoke
-bash scripts/graphiti-demo.sh seed --reset
-bash scripts/graphiti-demo.sh analyze
-bash scripts/verify-graphiti-demo-runtime.sh
+bash scripts/test-ontology.sh
+bash infra/graphiti/stop-api.sh
 bash infra/graphiti/stop.sh
 ```
 

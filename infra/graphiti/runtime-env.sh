@@ -18,3 +18,10 @@ require_private_graphiti_env() {
     return 1
   }
 }
+
+require_reason_api_token() {
+  [ -n "${REASON_API_SERVICE_TOKEN:-}" ] || {
+    echo 'REASON_API_SERVICE_TOKEN is required for the Reason ingestion API' >&2
+    return 1
+  }
+}

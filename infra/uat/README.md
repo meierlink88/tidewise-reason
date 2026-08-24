@@ -1,5 +1,9 @@
 # Reason UAT continuous delivery
 
+> Status: inactive. Tidewise Reason currently has no UAT publication workflow or UAT CI contract
+> check. The files in this directory are retained only as dormant, recoverable deployment design;
+> they must not be treated as an active release path.
+
 Tidewise Reason UAT deploys only the official OpenSPG Server image, whose runtime bundles KAG, and
 future Tidewise-owned Reasoning configuration or extensions. MySQL, Neo4j and MinIO are independent
 infrastructure owned and deployed by `tidewise-ai`; this directory never installs, upgrades, clears,
@@ -44,7 +48,7 @@ Before Reason deploys, `tidewise-ai` must provide:
 The Reason preflight checks this contract without modifying any middleware. A failed check stops the
 Reason deployment before the Server is recreated.
 
-## One-time ECS setup
+## Dormant ECS setup reference
 
 Run as root after the `tidewise-deploy` user, Docker, Compose, the shared network and the existing
 `/opt/tidewise/uat` shared lock directory are present:
@@ -53,11 +57,14 @@ Run as root after the `tidewise-deploy` user, Docker, Compose, the shared networ
 sudo bash infra/uat/bootstrap-ecs.sh
 ```
 
-Register a repository-scoped GitHub Actions Runner for `meierlink88/tidewise-reason` as the
-`tidewise-deploy` user, with the labels `linux`, `x64` and `tidewise-uat-ecs`. Do not reuse a
-repository-scoped runner registered to `tidewise-ai`.
+Do not register a repository-scoped GitHub Actions Runner while the UAT publication workflow is
+inactive. If the release path is restored later, its ownership and security boundary must be
+reviewed again before runner registration.
 
-## GitHub `uat` Environment
+## Dormant GitHub `uat` Environment reference
+
+The repository does not currently consume these variables or secrets from a deployment workflow.
+They are documented only for a future, separately reviewed restoration.
 
 Create an Environment named `uat` with:
 
@@ -74,14 +81,14 @@ Create an Environment named `uat` with:
 Passwords must contain 24-64 URL-safe characters (`A-Z`, `a-z`, `0-9`, `_`, `-`) because OpenSPG
 receives the Neo4j credential in a connection URI. Never reuse the bundled local demo credentials.
 
-## Deployment and verification
+## Dormant deployment and verification reference
 
-Dispatch **Deploy Reason UAT** from `main`. The selected commit must belong to `main` and have a
-successful **CI** run. The workflow serializes with all existing UAT deployment workflows through
-`/opt/tidewise/uat/deploy.lock`, pulls and resolves the official Server image, validates the external
+There is currently no **Deploy Reason UAT** GitHub Actions workflow and no UAT CI gate. The former
+design serialized UAT deployments through
+`/opt/tidewise/uat/deploy.lock`, pulled and resolved the official Server image, validated the external
 dependencies (including authenticated, read-only MinIO and the exact OpenSPG Neo4j provider
-contract), publishes
-the versioned Reason Schema artifacts, deploys only `server`, then verifies:
+contract), published
+the versioned Reason Schema artifacts, deployed only `server`, then verified:
 
 - container health and exact image ID;
 - the Web and Actuator endpoints;

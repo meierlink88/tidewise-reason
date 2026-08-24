@@ -1,0 +1,8 @@
+.git
+.runtime
+.venv
+__pycache__
+*.pyc
+docs
+tests
+runtime-overrides

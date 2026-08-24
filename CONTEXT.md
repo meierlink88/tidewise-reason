@@ -1,8 +1,9 @@
 # Reasoning Evaluation Context
 
 This context evaluates how Tidewise investment-research semantics can be projected into candidate
-graph and reasoning engines without changing the authoritative Tidewise domain model. OpenSPG is a
-retained, reversible evaluation; Graphiti is the active local evaluation.
+graph and reasoning engines, and identifies any authoritative domain facts or relations that the
+owning system must add before the reasoning flow can be complete. OpenSPG is a retained, reversible
+evaluation; Graphiti is the active local evaluation and never becomes the authoritative fact owner.
 
 ## Language
 
@@ -33,20 +34,20 @@ optional direct parent Industry in the canonical Tidewise hierarchy.
 _Avoid_: Market Sector, Research Concept, Industry Chain, Company, Product
 
 **Industry Chain**:
-A stable business structure within one Industry, formed by Industry Chain Nodes connected in a
-directed upstream-to-downstream sequence; it may belong to one or more Market Concepts.
+A bounded, directed research subgraph organized around a target output and end use, formed by
+Industry Chain Nodes connected through input, component or dependency relations.
 _Avoid_: Industry, Company, Product, Industry Chain Node, temporary event-transmission path
 
 **Industry Chain Node**:
-A stable business stage within an Industry Chain that may directly point to one or more downstream
-Industry Chain Nodes, has one canonical upstream, midstream or downstream position, and may belong
-to one or more Market Concepts.
+A reusable business or technical stage that may participate in multiple Industry Chains. Its
+upstream, midstream or downstream position belongs to a specific Industry Chain membership and is
+not a global node property.
 _Avoid_: Company, Security, complete Industry Chain, temporary event action
 
-**Market Concept**:
-A stock-market theme that groups Industry Chains and Industry Chain Nodes sharing an investment
-narrative or business logic.
-_Avoid_: Industry, Industry Chain, Industry Chain Node, Security, temporary event tag
+**Concept**:
+A cross-industry technology, policy, application, demand, business-model, ecosystem, event-narrative
+or market-theme fact with a stable identity and reviewed boundary.
+_Avoid_: Industry classification, Industry Chain, Industry Chain Node, temporary event tag
 
 **Company**:
 An independently operating business entity belonging to one or more Industries, Industry Chain
@@ -63,40 +64,66 @@ _Avoid_: Market Index, Market Sector, Security, Financial Instrument, market sen
 Entity, event, signal and relation instances that conform to the SPG Schema.
 _Avoid_: Schema, type catalog, TBox
 
-**Variable Signal**:
-A time-scoped event-native statement that a controlled variable changes or holds on a research
-entity; it is not a static attribute of that entity.
-_Avoid_: Company property, metric definition, investment conclusion
+**Signal**:
+A time-scoped, Event-linked statement that a controlled Variable changes or holds on one Analysis
+Anchor. A direct Signal interprets one curated Event; a derived Signal records an explicitly
+grounded analytical consequence. It remains transitively auditable to the Event's Evidence but does
+not use Evidence as a downstream reasoning input. A Signal is not a static attribute or an
+investment conclusion.
+_Avoid_: Variable definition, Company property, permanent trend label, buy/sell conclusion
 
-**Direct Impact Assertion**:
-A one-hop analytical assertion from a source Variable Signal to a target entity's controlled
-variable, with explicit mechanism and optional approved rule identity.
-_Avoid_: Event fact, graph relation, security-price conclusion
+**Signal Transmission Link**:
+A reasoning Link from one Signal to another that records the business mechanism, time lag,
+conditions, invalidation criteria and the authoritative topology Link used to ground one
+cross-entity step. Its existence records a reviewed analytical path, not an automatic graph rule.
+_Avoid_: Direct Impact Assertion, synthetic industry-chain edge, fixed-hop propagation rule
 
 **Evidence**:
-An immutable, source-addressable factual record used to support or contradict an Event or Signal.
-_Avoid_: LLM conclusion, graph-only summary, unsupported market opinion
+An immutable, source-addressable input used by the upstream Event curation work to establish,
+split, normalize, support or challenge an Event. Evidence is retained for provenance and audit but
+does not enter Event Analysis or Investment Reasoning as a direct inference input.
+_Avoid_: Event, Signal, downstream AgentContext input, LLM conclusion, unsupported market opinion
 
-**Research Event**:
-A time-scoped factual occurrence extracted from one or more Evidence records before downstream
-interpretation. Its source time and ingestion time remain distinct.
-_Avoid_: Variable Signal, forecast, investment conclusion
+**Event**:
+A time-scoped factual occurrence, plan or evaluation scenario produced by upstream Evidence
+curation and accepted as the factual starting point of downstream reasoning. Live and isolated
+evaluation Events use the same domain language; their source, public-knowledge and ingestion times
+remain distinct and auditable through upstream Evidence links.
+_Avoid_: Research Event, Scenario Event, Signal, forecast, investment conclusion
 
 **Analysis Anchor**:
-The stable entity or story line whose connected nodes define the bounded scope of one analysis.
-_Avoid_: User prompt, temporary result, unbounded graph traversal
+The stable Entity whose connected facts and relations define the bounded scope of one analysis.
+_Avoid_: Storyline, user prompt, temporary result, unbounded graph traversal
+
+**Event Anchor Link**:
+A reviewed reasoning Link that grounds one curated Event's direct 5W1H meaning to a stable Analysis
+Anchor or a scope/mechanism Entity required by downstream reasoning. It does not represent every
+mentioned Entity or an indirectly inferred affected node.
+_Avoid_: Mention edge, all Event entities, derived impact Link, Storyline route
+
+**Storyline**:
+A versioned, falsifiable investment-research thesis around one Analysis Anchor, research question
+and scope. It preserves the prior thesis baseline, supporting and contradicting Events and Signals,
+competing explanations, horizon views, invalidation conditions and review triggers across runs.
+_Avoid_: Event category, evidence folder, one Agent answer, permanent positive narrative
 
 **Analysis Result**:
 A reproducible, time-stamped interpretation produced from a declared question, retrieved graph
-context, Evidence and Variable Signals. It is not silently promoted to a new fact.
-_Avoid_: Evidence, Research Event, permanent entity attribute
+context, Events, Signals and the applicable Storyline baseline. It contains a concise conclusion,
+an auditable reasoning tree, horizon-specific opportunity/risk assessments and their conditions;
+it is not silently promoted to a new fact. Event-to-Evidence provenance remains available for audit
+outside the downstream reasoning input.
+_Avoid_: Evidence, Event, Storyline, permanent entity attribute, raw hidden chain of thought
 
 **Ontology Catalog**:
-The versioned, authoritative set of entity types, relation signatures and field contracts used to
-constrain extraction and to provide a task-specific Schema subset during analysis.
+The versioned, Reason-owned extraction contract derived from authoritative Data entity and relation
+contracts. It constrains Graphiti extraction and supplies task-specific Schema subsets without
+becoming the owner of the projected facts.
 _Avoid_: All graph instances, generated Cypher, unversioned prompt text
 
 **Analysis Context**:
 The reproducible task input assembled from one question, anchor, as-of time, horizon, selected
-Ontology fragment, temporally eligible facts, Evidence provenance and explicit validation issues.
+Ontology fragment, temporally eligible Events and Signals, graph relations, Storyline baseline and
+explicit validation issues. It may carry Event provenance identifiers for audit but not Evidence
+content as a reasoning input.
 _Avoid_: Final conclusion, unbounded graph dump, provider-specific search response

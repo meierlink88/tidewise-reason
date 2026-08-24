@@ -43,6 +43,7 @@ grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/verify.sh"
 grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/start-api.sh"
 grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/stop-api.sh"
 grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/verify-api.sh"
+grep -q 'require_private_graphiti_env' "$repo_root/scripts/verify-evidence-episode.sh"
 git -C "$repo_root" check-ignore -q .runtime/graphiti.env
 
 permission_test_file="$(mktemp)"

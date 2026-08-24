@@ -1,6 +1,6 @@
 """Region extraction type derived from Tidewise Data's Region schema."""
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from ontology.entities.base import TidewiseEntity
 from ontology.enums import RegionType
@@ -36,5 +36,5 @@ class Region(TidewiseEntity):
 
 
 ENTITY_TYPES = {"Region": Region}
-EDGE_TYPES = {}
-EDGE_TYPE_MAP = {}
+EDGE_TYPES: dict[str, type[BaseModel]] = {}
+EDGE_TYPE_MAP: dict[tuple[str, str], list[str]] = {}

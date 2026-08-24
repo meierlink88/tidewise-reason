@@ -81,6 +81,27 @@ class EvidenceEpisodeAPITest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 413, response.text)
 
+    def test_boolean_coercion_and_invalid_source_provenance_are_rejected(self) -> None:
+        coerced = evidence().model_dump(mode="json")
+        coerced["is_original"] = 1
+        invalid_provenance = evidence().model_dump(mode="json")
+        invalid_provenance["is_original"] = False
+        invalid_provenance["quoted_source_name"] = None
+
+        coerced_response = self.client.post(
+            "/api/reason/v1/evidence-episodes",
+            headers=self.headers,
+            json={"evidences": [coerced]},
+        )
+        provenance_response = self.client.post(
+            "/api/reason/v1/evidence-episodes",
+            headers=self.headers,
+            json={"evidences": [invalid_provenance]},
+        )
+
+        self.assertEqual(coerced_response.status_code, 422, coerced_response.text)
+        self.assertEqual(provenance_response.status_code, 422, provenance_response.text)
+
     def test_same_evidence_is_an_idempotent_duplicate(self) -> None:
         payload = {"evidences": [evidence().model_dump(mode="json")]}
         first = self.client.post(

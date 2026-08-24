@@ -25,11 +25,12 @@ class GraphitiEvidenceEpisodeWriter:
     def __init__(self, graphiti: Graphiti):
         self._graphiti = graphiti
 
-    async def _find_existing(self, name: str) -> tuple[str, str] | None:
+    async def _find_existing(self, name: str) -> tuple[str, str, bool] | None:
         records, _, _ = await self._graphiti.driver.execute_query(
             """
             MATCH (episode:Episodic {name: $name, group_id: $group_id})
-            RETURN episode.uuid AS uuid, episode.content AS content
+            RETURN episode.uuid AS uuid, episode.content AS content,
+                   coalesce(episode.tidewise_ingestion_complete, false) AS complete
             ORDER BY episode.created_at ASC
             LIMIT 2
             """,
@@ -42,15 +43,26 @@ class GraphitiEvidenceEpisodeWriter:
         if not records:
             return None
         record = records[0]
-        return str(record["uuid"]), str(record["content"])
+        return str(record["uuid"]), str(record["content"]), bool(record["complete"])
+
+    async def _mark_complete(self, episode_uuid: str) -> None:
+        await self._graphiti.driver.execute_query(
+            """
+            MATCH (episode:Episodic {uuid: $uuid, group_id: $group_id})
+            SET episode.tidewise_ingestion_complete = true
+            """,
+            uuid=episode_uuid,
+            group_id=GRAPHITI_GROUP_ID,
+        )
 
     async def write(self, episode: RawEpisode) -> str:
         existing = await self._find_existing(episode.name)
         if existing is not None:
-            episode_uuid, content = existing
+            episode_uuid, content, complete = existing
             if content != episode.content:
                 raise RuntimeError("Graphiti Episode identity has conflicting content")
-            return episode_uuid
+            if complete:
+                return episode_uuid
 
         result = await self._graphiti.add_episode(
             name=episode.name,
@@ -59,11 +71,14 @@ class GraphitiEvidenceEpisodeWriter:
             reference_time=episode.reference_time,
             source=episode.source,
             group_id=GRAPHITI_GROUP_ID,
+            uuid=existing[0] if existing is not None else None,
             entity_types=ENTITY_TYPES,
+            excluded_entity_types=["Entity"],
             edge_types=EDGE_TYPES,
             edge_type_map=EDGE_TYPE_MAP,
             custom_extraction_instructions=EXTRACTION_INSTRUCTIONS,
         )
+        await self._mark_complete(result.episode.uuid)
         return result.episode.uuid
 
     async def close(self) -> None:

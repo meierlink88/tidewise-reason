@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from ontology.entities.base import TidewiseEntity
 from ontology.enums import ConceptType, ReviewStatus
@@ -40,5 +40,5 @@ class Concept(TidewiseEntity):
 
 
 ENTITY_TYPES = {"Concept": Concept}
-EDGE_TYPES = {}
-EDGE_TYPE_MAP = {}
+EDGE_TYPES: dict[str, type[BaseModel]] = {}
+EDGE_TYPE_MAP: dict[tuple[str, str], list[str]] = {}

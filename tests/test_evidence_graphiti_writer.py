@@ -50,12 +50,13 @@ class GraphitiEvidenceEpisodeWriterTest(unittest.TestCase):
         self.assertIs(call["entity_types"], ENTITY_TYPES)
         self.assertIs(call["edge_types"], EDGE_TYPES)
         self.assertIs(call["edge_type_map"], EDGE_TYPE_MAP)
+        self.assertEqual(call["excluded_entity_types"], ["Entity"])
         self.assertTrue(call["custom_extraction_instructions"])
 
     def test_existing_identical_episode_is_reused_after_worker_retry(self) -> None:
         episode = to_raw_episode(evidence())
         graphiti = FakeGraphiti(
-            [{"uuid": "existing-uuid", "content": episode.content}]
+            [{"uuid": "existing-uuid", "content": episode.content, "complete": True}]
         )
         writer = GraphitiEvidenceEpisodeWriter(graphiti)  # type: ignore[arg-type]
 
@@ -64,9 +65,27 @@ class GraphitiEvidenceEpisodeWriterTest(unittest.TestCase):
         self.assertEqual(episode_uuid, "existing-uuid")
         self.assertEqual(graphiti.calls, [])
 
+    def test_incomplete_identical_episode_is_repaired_in_place(self) -> None:
+        episode = to_raw_episode(evidence())
+        graphiti = FakeGraphiti(
+            [{"uuid": "existing-uuid", "content": episode.content, "complete": False}]
+        )
+        writer = GraphitiEvidenceEpisodeWriter(graphiti)  # type: ignore[arg-type]
+
+        episode_uuid = asyncio.run(writer.write(episode))
+
+        self.assertEqual(episode_uuid, "graphiti-episode-uuid")
+        self.assertEqual(graphiti.calls[0]["uuid"], "existing-uuid")
+
     def test_existing_episode_with_different_content_fails_closed(self) -> None:
         graphiti = FakeGraphiti(
-            [{"uuid": "existing-uuid", "content": '{"different":true}'}]
+            [
+                {
+                    "uuid": "existing-uuid",
+                    "content": '{"different":true}',
+                    "complete": False,
+                }
+            ]
         )
         writer = GraphitiEvidenceEpisodeWriter(graphiti)  # type: ignore[arg-type]
 

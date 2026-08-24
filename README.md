@@ -144,11 +144,14 @@ private mode-`0600` runtime environment, then use only the service-scoped comman
 ```bash
 bash infra/graphiti/start-api.sh
 bash infra/graphiti/verify-api.sh
+bash scripts/verify-evidence-episode.sh
 bash infra/graphiti/stop-api.sh
 ```
 
 The API binds to <http://127.0.0.1:8890> by default. Its delivery state is stored in the dedicated
 `tidewise-reason_graphiti-api-state` volume; stopping the service does not delete that volume.
+The live Evidence check is idempotent: it selects one already-published Data Service Evidence and
+verifies the resulting completed Episodic node instead of creating a synthetic fact.
 
 ## UAT
 

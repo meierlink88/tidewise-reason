@@ -5,7 +5,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import AnyUrl, BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    AnyUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictBool,
+    field_validator,
+    model_validator,
+)
 
 
 class EvidenceSemanticDTO(BaseModel):
@@ -53,10 +61,10 @@ class EvidenceDTO(BaseModel):
     source_name: str = Field(min_length=1, max_length=100)
     source_level: Literal["L1_OFFICIAL", "L2_WIRE", "L3_MEDIA", "L4_SOCIAL"]
     source_url: AnyUrl = Field(max_length=2048)
-    is_original: bool
+    is_original: StrictBool
     quoted_source_name: str | None = Field(default=None, max_length=100)
     keywords: list[str]
-    is_split: bool
+    is_split: StrictBool
     published_at: datetime | None
     collected_at: datetime
 
@@ -74,6 +82,10 @@ class EvidenceDTO(BaseModel):
         category_ids = [category.id for category in self.categories]
         if len(category_ids) != len(set(category_ids)):
             raise ValueError("Evidence categories must be unique")
+        if self.is_original and self.quoted_source_name is not None:
+            raise ValueError("original Evidence must not declare a quoted source")
+        if not self.is_original and not (self.quoted_source_name or "").strip():
+            raise ValueError("reposted Evidence requires a quoted source name")
         return self
 
 

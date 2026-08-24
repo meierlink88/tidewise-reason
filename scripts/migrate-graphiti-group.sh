@@ -38,6 +38,9 @@ if [ "$mode" = plan ]; then
   exit 0
 fi
 
+before_nodes="$(cypher "MATCH (n) WHERE n.group_id IN ['tidewise-investment-research', 'neo4j'] RETURN count(n) AS total" | tail -n 1)"
+before_relationships="$(cypher "MATCH ()-[r]->() WHERE r.group_id IN ['tidewise-investment-research', 'neo4j'] RETURN count(r) AS total" | tail -n 1)"
+
 cypher "MATCH (n {group_id: 'tidewise-investment-research'}) SET n.group_id = 'neo4j' RETURN count(n) AS migrated_nodes"
 cypher "MATCH ()-[r]->() WHERE r.group_id = 'tidewise-investment-research' SET r.group_id = 'neo4j' RETURN count(r) AS migrated_relationships"
 
@@ -46,6 +49,11 @@ remaining_relationships="$(cypher "MATCH ()-[r]->() WHERE r.group_id = 'tidewise
 [ "$remaining_nodes" = '0' ]
 [ "$remaining_relationships" = '0' ]
 
-cypher "MATCH (n {group_id: 'neo4j'}) RETURN count(n) AS nodes"
-cypher "MATCH ()-[r]->() WHERE r.group_id = 'neo4j' RETURN count(r) AS relationships"
+after_nodes="$(cypher "MATCH (n {group_id: 'neo4j'}) RETURN count(n) AS total" | tail -n 1)"
+after_relationships="$(cypher "MATCH ()-[r]->() WHERE r.group_id = 'neo4j' RETURN count(r) AS total" | tail -n 1)"
+[ "$after_nodes" = "$before_nodes" ]
+[ "$after_relationships" = "$before_relationships" ]
+
+echo "nodes_before=$before_nodes nodes_after=$after_nodes"
+echo "relationships_before=$before_relationships relationships_after=$after_relationships"
 echo 'PASS Graphiti group_id migrated in place without deleting graph data'

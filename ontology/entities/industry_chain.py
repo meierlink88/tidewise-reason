@@ -40,6 +40,14 @@ class IndustryChain(TidewiseEntity):
         min_length=1,
         description="Canonical free-text geographic scope of the IndustryChain.",
     )
+    primary_country_id: str | None = Field(
+        default=None,
+        pattern=r"^COU[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+        description=(
+            "Optional canonical Tidewise Data Country ID retained as an IndustryChain "
+            "property; it does not create an IndustryChain-to-Country relationship."
+        ),
+    )
     as_of_date: date | None = Field(
         default=None,
         description="Business date for which the IndustryChain topology is valid.",

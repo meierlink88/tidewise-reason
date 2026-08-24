@@ -21,6 +21,9 @@ Data Context and PostgreSQL relation contracts. Graphiti-protected properties su
 may only be populated by Data projection or successful canonical entity resolution; an LLM must
 never invent it.
 
+`IndustryChain.primary_country_id` is retained only as a canonical Data property. The ontology does
+not expose `IndustryChainPrimaryCountry` or an inverse ChainNode containment relation.
+
 Each `ontology/entities/<entity>.py` file owns one Entity model and all relationships for which that
 Entity is the source. The file exports its local `ENTITY_TYPES`, `EDGE_TYPES` and `EDGE_TYPE_MAP`;
 `ontology/catalog.py` only validates and aggregates those registrations. Relationships remain

@@ -44,6 +44,9 @@ grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/start-api.sh"
 grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/stop-api.sh"
 grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/verify-api.sh"
 grep -q 'require_private_graphiti_env' "$repo_root/scripts/verify-evidence-episode.sh"
+grep -Fq 'snapshot_file="$(mktemp)"' "$repo_root/scripts/initialize-chainnode-graph.sh"
+grep -Fq '> "$snapshot_file"' "$repo_root/scripts/initialize-chainnode-graph.sh"
+grep -Fq '< "$snapshot_file"' "$repo_root/scripts/initialize-chainnode-graph.sh"
 git -C "$repo_root" check-ignore -q .runtime/graphiti.env
 
 permission_test_file="$(mktemp)"
@@ -86,6 +89,8 @@ PYTHONPYCACHEPREFIX="$pycache_root" python3 -m py_compile \
   "$repo_root"/ontology/*.py \
   "$repo_root"/ontology/entities/*.py \
   "$repo_root"/projection/*.py \
+  "$repo_root"/initialization/*.py \
+  "$repo_root"/initialization/chainnode/*.py \
   "$repo_root"/ingestion/*.py \
   "$repo_root"/ingestion/episcode/*.py \
   "$repo_root"/ingestion/episcode/evidence/*.py \

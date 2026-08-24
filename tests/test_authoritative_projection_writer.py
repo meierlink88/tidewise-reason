@@ -7,11 +7,21 @@ from unittest.mock import AsyncMock
 
 from graphiti_core.edges import EntityEdge
 
-from projection.authoritative_writer import _save_edges_with_creation_time
+from projection.authoritative_writer import _save_edges_with_creation_time, scoped_edge_uuid
 from projection.runtime import ProjectionError
 
 
 class AuthoritativeProjectionWriterTest(unittest.IsolatedAsyncioTestCase):
+    def test_scoped_relationship_uuid_distinguishes_industry_chains(self) -> None:
+        first = scoped_edge_uuid("ChainNodeInputTo", "chain-a", "source", "target")
+        second = scoped_edge_uuid("ChainNodeInputTo", "chain-b", "source", "target")
+
+        self.assertNotEqual(first, second)
+        self.assertEqual(
+            first,
+            scoped_edge_uuid("ChainNodeInputTo", "chain-a", "source", "target"),
+        )
+
     async def test_missing_relationship_embedding_fails_before_graph_write(self) -> None:
         edge = EntityEdge(
             uuid="11111111-1111-4111-8111-111111111111",

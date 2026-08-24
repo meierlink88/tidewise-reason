@@ -79,7 +79,7 @@ extension seams and recovery.
 ## Graphiti Ontology
 
 The formal Graphiti extraction types live in [`ontology/`](ontology/). The first
-`evidence-curation/v2` catalog mirrors the selected Tidewise Data entity and stable-link contracts;
+`evidence-curation/v3` catalog mirrors the selected Tidewise Data entity and stable-link contracts;
 it contains no authoritative facts and models Evidence as an Episode rather than an Entity.
 
 ```bash
@@ -142,6 +142,18 @@ Graph relationship `created_at` is generated when Reason first creates the relat
 preserved by deterministic UUID on later upserts. It is not the business-valid time of the source
 fact. `primary_country_id` remains an IndustryChain property and does not create a Country link;
 ChainNode membership is owned by the later ChainNode projection.
+
+ChainNode initialization is a replayable one-time operation. It reads an explicit read-only,
+repeatable snapshot directly from the local Tidewise Data PostgreSQL container because no suitable
+complete Data API exists yet. It never reads the retired `chain_node_relations` table. Membership
+stores only stage and position; the three typed node-to-node relations store only their canonical
+edge ID and IndustryChain scope:
+
+```bash
+bash scripts/initialize-chainnode-graph.sh plan
+bash scripts/initialize-chainnode-graph.sh run --replace
+bash scripts/initialize-chainnode-graph.sh verify
+```
 
 ## Evidence Episode Ingestion
 

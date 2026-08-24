@@ -9,6 +9,7 @@ from ontology.catalog import (
 )
 from ontology.entities import (
     ChainNode,
+    ChainNodeBelongsToIndustryChain,
     ChainNodeDependsOn,
     ChainNodeInputTo,
     ChainNodeIsComponentOf,
@@ -19,10 +20,8 @@ from ontology.entities import (
     Industry,
     IndustryHasParent,
     IndustryChain,
-    IndustryChainContainsNode,
     IndustryChainMappedToConcept,
     IndustryChainMappedToIndustry,
-    IndustryChainPrimaryCountry,
     Organization,
     OrganizationInRegion,
     Region,
@@ -30,6 +29,7 @@ from ontology.entities import (
 
 __all__ = [
     "ChainNode",
+    "ChainNodeBelongsToIndustryChain",
     "ChainNodeDependsOn",
     "ChainNodeInputTo",
     "ChainNodeIsComponentOf",
@@ -43,10 +43,8 @@ __all__ = [
     "Industry",
     "IndustryHasParent",
     "IndustryChain",
-    "IndustryChainContainsNode",
     "IndustryChainMappedToConcept",
     "IndustryChainMappedToIndustry",
-    "IndustryChainPrimaryCountry",
     "ONTOLOGY_VERSION",
     "Organization",
     "OrganizationInRegion",

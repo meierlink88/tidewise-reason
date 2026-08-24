@@ -6,13 +6,13 @@ the stable fields needed for entity resolution.
 
 ## Version
 
-The first catalog is `evidence-curation/v1` and contains:
+The current catalog is `evidence-curation/v2` and contains:
 
 - Entity types: `Country`, `Region`, `Organization`, `Industry`, `Concept`, `IndustryChain`,
   `ChainNode`.
 - Entity-link types: `CountryInRegion`, `CountryMemberOfOrganization`, `OrganizationInRegion`,
-  `IndustryHasParent`, `IndustryChainPrimaryCountry`, `IndustryChainContainsNode`,
-  `IndustryChainMappedToIndustry`, `IndustryChainMappedToConcept`,
+  `IndustryHasParent`, `IndustryChainMappedToIndustry`, `IndustryChainMappedToConcept`,
+  `ChainNodeBelongsToIndustryChain`,
   `ChainNodeInputTo`, `ChainNodeIsComponentOf`, `ChainNodeDependsOn`.
 
 The field and relation semantics are derived from Tidewise Data's versioned `doctype/*.schema`,
@@ -20,6 +20,9 @@ Data Context and PostgreSQL relation contracts. Graphiti-protected properties su
 `summary` and `created_at` are not redeclared. `data_object_id` is optional during extraction and
 may only be populated by Data projection or successful canonical entity resolution; an LLM must
 never invent it.
+
+`IndustryChain.primary_country_id` is retained only as a canonical Data property. The ontology does
+not expose `IndustryChainPrimaryCountry` or an inverse ChainNode containment relation.
 
 Each `ontology/entities/<entity>.py` file owns one Entity model and all relationships for which that
 Entity is the source. The file exports its local `ENTITY_TYPES`, `EDGE_TYPES` and `EDGE_TYPE_MAP`;

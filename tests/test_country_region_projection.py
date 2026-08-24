@@ -105,7 +105,7 @@ class CountryRegionProjectionTest(unittest.TestCase):
 
 
 class CountryRegionProjectionExecutionTest(unittest.IsolatedAsyncioTestCase):
-    async def test_execute_uses_public_namespace_bulk_writers_without_llm(self) -> None:
+    async def test_execute_preserves_relationship_creation_time_without_llm(self) -> None:
         plan = build_plan(
             [country("COU11111111-1111-4111-8111-111111111111", "CN", "中国")]
         )
@@ -116,21 +116,27 @@ class CountryRegionProjectionExecutionTest(unittest.IsolatedAsyncioTestCase):
         )
         node_writer = SimpleNamespace(save_bulk=AsyncMock())
         edge_writer = SimpleNamespace(save_bulk=AsyncMock())
+        driver = SimpleNamespace(execute_query=AsyncMock())
         graphiti = SimpleNamespace(
             embedder=embedder,
             nodes=SimpleNamespace(entity=node_writer),
             edges=SimpleNamespace(entity=edge_writer),
+            driver=driver,
         )
 
         result = await execute_plan(graphiti, plan)
 
         self.assertEqual(result, (2, 1, {"nodes": 0, "relationships": 0}))
         node_writer.save_bulk.assert_awaited_once()
-        edge_writer.save_bulk.assert_awaited_once()
+        edge_writer.save_bulk.assert_not_awaited()
         saved_nodes = node_writer.save_bulk.await_args.args[0]
-        saved_edges = edge_writer.save_bulk.await_args.args[0]
+        saved_edges = driver.execute_query.await_args.kwargs["entity_edges"]
         self.assertTrue(all(node.name_embedding is not None for node in saved_nodes))
-        self.assertTrue(all(edge.fact_embedding is not None for edge in saved_edges))
+        self.assertTrue(all(edge["fact_embedding"] is not None for edge in saved_edges))
+        self.assertIn(
+            "coalesce(e.created_at, edge.created_at)",
+            driver.execute_query.await_args.args[0],
+        )
         self.assertFalse(hasattr(graphiti, "llm_client"))
 
 

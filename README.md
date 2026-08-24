@@ -79,7 +79,7 @@ extension seams and recovery.
 ## Graphiti Ontology
 
 The formal Graphiti extraction types live in [`ontology/`](ontology/). The first
-`evidence-curation/v1` catalog mirrors the selected Tidewise Data entity and stable-link contracts;
+`evidence-curation/v2` catalog mirrors the selected Tidewise Data entity and stable-link contracts;
 it contains no authoritative facts and models Evidence as an Episode rather than an Entity.
 
 ```bash
@@ -126,6 +126,22 @@ bash scripts/project-concepts.sh verify
 
 Both use scoped replacement within the shared `neo4j` group. They preserve
 Country, Region and `CountryInRegion` facts, and do not infer an Industry-to-Concept relationship.
+
+IndustryChain is projected only after the canonical Industry and Concept targets exist. The
+projection reads all Data-owned chains plus their typed `mapped_to_industry` and
+`mapped_to_concept` Links, preserves each Link's `ERL...` identity, and writes only the two
+ontology-approved mapping directions:
+
+```bash
+bash scripts/project-industry-chains.sh plan
+bash scripts/project-industry-chains.sh run --replace
+bash scripts/project-industry-chains.sh verify
+```
+
+Graph relationship `created_at` is generated when Reason first creates the relationship and is
+preserved by deterministic UUID on later upserts. It is not the business-valid time of the source
+fact. `primary_country_id` remains an IndustryChain property and does not create a Country link;
+ChainNode membership is owned by the later ChainNode projection.
 
 ## Evidence Episode Ingestion
 

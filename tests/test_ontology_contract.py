@@ -10,8 +10,8 @@ from ontology import (
     EDGE_TYPES,
     ENTITY_TYPES,
     ONTOLOGY_VERSION,
+    ChainNodeBelongsToIndustryChain,
     Country,
-    IndustryChainContainsNode,
     ontology_catalog,
 )
 
@@ -37,10 +37,9 @@ class OntologyContractTest(unittest.TestCase):
                 "CountryMemberOfOrganization",
                 "OrganizationInRegion",
                 "IndustryHasParent",
-                "IndustryChainPrimaryCountry",
-                "IndustryChainContainsNode",
                 "IndustryChainMappedToIndustry",
                 "IndustryChainMappedToConcept",
+                "ChainNodeBelongsToIndustryChain",
                 "ChainNodeInputTo",
                 "ChainNodeIsComponentOf",
                 "ChainNodeDependsOn",
@@ -51,6 +50,12 @@ class OntologyContractTest(unittest.TestCase):
             ["ChainNodeInputTo", "ChainNodeIsComponentOf", "ChainNodeDependsOn"],
         )
         self.assertEqual(
+            EDGE_TYPE_MAP[("ChainNode", "IndustryChain")],
+            ["ChainNodeBelongsToIndustryChain"],
+        )
+        self.assertNotIn(("IndustryChain", "ChainNode"), EDGE_TYPE_MAP)
+        self.assertNotIn(("IndustryChain", "Country"), EDGE_TYPE_MAP)
+        self.assertEqual(
             EDGE_TYPE_MAP[("IndustryChain", "Industry")],
             ["IndustryChainMappedToIndustry"],
         )
@@ -58,7 +63,7 @@ class OntologyContractTest(unittest.TestCase):
             EDGE_TYPE_MAP[("IndustryChain", "Concept")],
             ["IndustryChainMappedToConcept"],
         )
-        self.assertEqual(ONTOLOGY_VERSION, "evidence-curation/v1")
+        self.assertEqual(ONTOLOGY_VERSION, "evidence-curation/v2")
 
     def test_graphiti_models_are_pydantic_classes_without_protected_fields(self) -> None:
         protected = {
@@ -89,8 +94,8 @@ class OntologyContractTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             Country(data_object_id="ENT11111111-1111-4111-8111-111111111111")
 
-    def test_membership_stage_is_scoped_to_the_contains_node_link(self) -> None:
-        link = IndustryChainContainsNode(
+    def test_membership_stage_is_owned_by_the_chain_node_link(self) -> None:
+        link = ChainNodeBelongsToIndustryChain(
             position=1,
             contextual_stage="upstream",
             review_status="approved",
@@ -98,12 +103,12 @@ class OntologyContractTest(unittest.TestCase):
         )
         self.assertEqual(link.contextual_stage.value, "upstream")
         with self.assertRaises(ValidationError):
-            IndustryChainContainsNode(position=0)
+            ChainNodeBelongsToIndustryChain(position=0)
 
     def test_catalog_is_serializable_and_exposes_source_target_pairs(self) -> None:
         catalog = ontology_catalog()
         json.dumps(catalog)
-        self.assertEqual(catalog["version"], "evidence-curation/v1")
+        self.assertEqual(catalog["version"], "evidence-curation/v2")
         self.assertEqual(
             catalog["entity_links"]["CountryInRegion"]["source_targets"],
             [{"source": "Country", "target": "Region"}],

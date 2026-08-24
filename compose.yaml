@@ -8,6 +8,11 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8887:8887"
+    volumes:
+      - type: bind
+        source: ./runtime-overrides/kag/pipelineconf/kag_thinker.yaml
+        target: /home/admin/miniconda3/lib/python3.10/site-packages/kag/solver/pipelineconf/kag_thinker.yaml
+        read_only: true
     environment:
       TZ: Asia/Shanghai
       LANG: C.UTF-8

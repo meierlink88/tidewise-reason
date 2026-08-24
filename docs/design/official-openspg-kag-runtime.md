@@ -41,6 +41,21 @@ The official image remains unmodified. Tidewise-owned extensions should use one 
 - a separate Tidewise process or sidecar that implements custom Scanner, Extractor, Retriever,
   Planner, Executor, Generator, Prompt or MCP/HTTP adapters.
 
+One compatibility override is approved for the bundled KAG runtime: Compose bind-mounts a
+corrected `kag_thinker.yaml` as a read-only single-file replacement. The planner bundled in the
+official image requires `rewrite_prompt` while the bundled pipeline configuration omits it. The
+bundled `kag_clarification` prompt also leaves Action numbering implicit while the parser accepts
+only `ActionN:` labels, causing generic models to produce plans that fail before retrieval. The
+override reuses the already registered `default_rewrite_sub_task_query` and
+`default_logic_form_plan` prompts. The configured generic DeepSeek model also does not emit the
+KAG-Thinker `<search>` protocol expected by `kag_model_hybrid_retrieval_executor`, so the override
+retains `KAGModelPlanner` for multi-step planning and selects the bundled
+`kag_hybrid_retrieval_executor` to execute each retrieval step. Its optional per-step LLM summary
+is disabled because the final generator performs answer synthesis. This is a generic-model
+compatibility mode, not the full iterative KAG-Thinker search protocol. It does not replace or
+modify the image, executable JAR or KAG wheel. Remove the compatibility substitutions after a
+protocol-compatible model or an official matching pipeline is available.
+
 An extension that requires replacing the KAG package inside `openspg-server` is outside this
 runtime policy. If an upstream extension must appear as a selectable component in the official
 product UI, either wait for an official image containing it or run the extension externally and
@@ -53,8 +68,7 @@ locally pulled official image ID, the Web health/page endpoints respond, the bun
 CLIs load, and the bundled KAG distribution can be imported. It does not patch or certify
 individual upstream pipeline configurations.
 
-At the time this policy was adopted, the resolved official image contains a
-`kag_thinker_pipeline` configuration without the `rewrite_prompt` required by its bundled
-`KAGModelPlanner`. The former local runtime patched and tested that seam; the official-only policy
-deliberately does not. Use another supported public Solver pipeline for programmatic integration,
-or wait for an official image that fixes the mismatch.
+The verification script also checks that the effective `kag_thinker_pipeline` declares both the
+`default_rewrite_sub_task_query` prompt required by the bundled `KAGModelPlanner` and the numbered
+logic-form planning prompt expected by its parser. It also checks that retrieval steps use the
+bundled standard KAG hybrid executor required by the generic-model compatibility mode.

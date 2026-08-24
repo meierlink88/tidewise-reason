@@ -32,6 +32,11 @@ configure an LLM/embedding provider, or claim production readiness.
 - Keep the official local demo credentials; never reuse them outside this workstation.
 - Keep extension source, runtime configuration, data and credentials outside the official image;
   do not patch its installed Python packages in place.
+- Apply the approved KAG Thinker compatibility correction as a read-only single-file Compose
+  mount. It supplies the required query rewrite prompt and selects the bundled numbered
+  logic-form planning prompt expected by the parser. With the configured generic DeepSeek model,
+  it retains KAG Model multi-step planning and executes retrieval steps through the bundled
+  standard KAG hybrid executor; do not replace the bundled KAG wheel.
 
 ## Acceptance seam
 

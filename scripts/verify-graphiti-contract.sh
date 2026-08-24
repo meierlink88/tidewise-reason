@@ -22,25 +22,22 @@ assert config["volumes"]["graphiti-neo4j-data"]["name"] == "tidewise-reason_grap
 assert config["volumes"]["graphiti-neo4j-logs"]["name"] == "tidewise-reason_graphiti-neo4j-logs"
 PY
 
-grep -qx 'graphiti-core==0.29.3' "$repo_root/graphiti_demo/requirements.in"
-grep -qx 'httpx==0.28.1' "$repo_root/graphiti_demo/requirements.in"
-grep -qx 'neo4j==6.2.0' "$repo_root/graphiti_demo/requirements.in"
-grep -q '^graphiti-core==0[.]29[.]3' "$repo_root/graphiti_demo/requirements.lock"
-grep -q -- '--hash=sha256:' "$repo_root/graphiti_demo/requirements.lock"
+grep -qx 'graphiti-core==0.29.3' "$repo_root/ontology/requirements.in"
+grep -qx 'httpx==0.28.1' "$repo_root/ontology/requirements.in"
+grep -qx 'neo4j==6.2.0' "$repo_root/ontology/requirements.in"
+grep -q '^graphiti-core==0[.]29[.]3' "$repo_root/ontology/requirements.lock"
+grep -q -- '--hash=sha256:' "$repo_root/ontology/requirements.lock"
 grep -q -- '--python 3.12.11' "$repo_root/scripts/install-graphiti-runtime.sh"
 grep -q -- '--require-hashes' "$repo_root/scripts/install-graphiti-runtime.sh"
 grep -q 'TIDEWISE_DATA_BASE_URL' "$repo_root/infra/graphiti/.env.example"
-grep -q 'api/data/v1/evidences' "$repo_root/graphiti_demo/runtime.py"
-grep -q 'ontology_schema' "$repo_root/graphiti_demo/pipeline.py"
-grep -q 'EVIDENCE_EPISODE_UUIDS' "$repo_root/graphiti_demo/pipeline.py"
-grep -q 'runtime environment must have mode 0600' "$repo_root/graphiti_demo/runtime.py"
 grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/start.sh"
 grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/stop.sh"
 grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/verify.sh"
 git -C "$repo_root" check-ignore -q .runtime/graphiti.env
 
 permission_test_file="$(mktemp)"
-trap 'rm -f "$permission_test_file"' EXIT
+pycache_root="$(mktemp -d)"
+trap 'rm -f "$permission_test_file"; rm -rf "$pycache_root"' EXIT
 chmod 0644 "$permission_test_file"
 if bash -c 'source "$1"; require_private_graphiti_env "$2"' _ \
   "$repo_root/infra/graphiti/runtime-env.sh" "$permission_test_file" 2>/dev/null; then
@@ -51,24 +48,29 @@ chmod 0600 "$permission_test_file"
 bash -c 'source "$1"; require_private_graphiti_env "$2"' _ \
   "$repo_root/infra/graphiti/runtime-env.sh" "$permission_test_file"
 
-if rg -n 'graphiti_core|execute_query|MATCH \(' \
-  "$repo_root/graphiti_demo/cli.py" "$repo_root/graphiti_demo/pipeline.py"; then
-  echo 'Graphiti concrete provider behavior escaped the adapter' >&2
+if rg -n 'docker exec|openspg\.kg_user_model|FROM evidences|JOIN raw_evidences' \
+  "$repo_root/ontology"; then
+  echo 'Graphiti ontology bypasses an owning service contract' >&2
   exit 1
 fi
 
-if rg -n 'docker exec|openspg\.kg_user_model|FROM evidences|JOIN raw_evidences' \
-  "$repo_root/graphiti_demo"; then
-  echo 'Graphiti demo bypasses an owning service contract' >&2
+if rg -n 'graphiti_core[.]utils[.]bulk_utils|add_nodes_and_edges_bulk' \
+  "$repo_root/projection"; then
+  echo 'Canonical projection bypasses the public Graphiti Namespace API' >&2
   exit 1
 fi
 
 if rg -n 'docker compose .*down|--remove-orphans|docker volume rm' \
-  "$repo_root/infra/graphiti" "$repo_root/scripts/graphiti-demo.sh" \
-  "$repo_root/scripts/install-graphiti-runtime.sh"; then
+  "$repo_root/infra/graphiti" "$repo_root/scripts/install-graphiti-runtime.sh"; then
   echo 'Graphiti lifecycle includes a destructive or unscoped command' >&2
   exit 1
 fi
 
-python3 -m py_compile "$repo_root"/graphiti_demo/*.py
+PYTHONPYCACHEPREFIX="$pycache_root" python3 -m py_compile \
+  "$repo_root"/ontology/*.py \
+  "$repo_root"/ontology/entities/*.py \
+  "$repo_root"/projection/*.py \
+  "$repo_root"/tests/test_ontology_contract.py
+bash "$repo_root/scripts/test-ontology.sh"
+bash "$repo_root/scripts/test-projection.sh"
 echo 'PASS Graphiti static contract'

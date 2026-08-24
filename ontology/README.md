@@ -6,13 +6,13 @@ the stable fields needed for entity resolution.
 
 ## Version
 
-The first catalog is `evidence-curation/v1` and contains:
+The current catalog is `evidence-curation/v2` and contains:
 
 - Entity types: `Country`, `Region`, `Organization`, `Industry`, `Concept`, `IndustryChain`,
   `ChainNode`.
 - Entity-link types: `CountryInRegion`, `CountryMemberOfOrganization`, `OrganizationInRegion`,
-  `IndustryHasParent`, `IndustryChainPrimaryCountry`, `IndustryChainContainsNode`,
-  `IndustryChainMappedToIndustry`, `IndustryChainMappedToConcept`,
+  `IndustryHasParent`, `IndustryChainMappedToIndustry`, `IndustryChainMappedToConcept`,
+  `ChainNodeBelongsToIndustryChain`,
   `ChainNodeInputTo`, `ChainNodeIsComponentOf`, `ChainNodeDependsOn`.
 
 The field and relation semantics are derived from Tidewise Data's versioned `doctype/*.schema`,

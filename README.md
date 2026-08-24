@@ -79,7 +79,7 @@ extension seams and recovery.
 ## Graphiti Ontology
 
 The formal Graphiti extraction types live in [`ontology/`](ontology/). The first
-`evidence-curation/v1` catalog mirrors the selected Tidewise Data entity and stable-link contracts;
+`evidence-curation/v2` catalog mirrors the selected Tidewise Data entity and stable-link contracts;
 it contains no authoritative facts and models Evidence as an Episode rather than an Entity.
 
 ```bash

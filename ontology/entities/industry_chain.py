@@ -2,10 +2,10 @@
 
 from datetime import date, datetime
 
-from pydantic import Field, PositiveInt
+from pydantic import Field
 
 from ontology.entities.base import TidewiseEntity, TidewiseEntityLink
-from ontology.enums import ContextualStage, RecordStatus, ReviewStatus
+from ontology.enums import RecordStatus, ReviewStatus
 
 
 class IndustryChain(TidewiseEntity):
@@ -90,41 +90,12 @@ class IndustryChainMappedToConcept(IndustryChainMapping):
     """An IndustryChain maps to a cross-industry Concept fact in Tidewise Data."""
 
 
-class IndustryChainPrimaryCountry(TidewiseEntityLink):
-    """An IndustryChain uses a Country as its optional primary geographic scope."""
-
-
-class IndustryChainContainsNode(TidewiseEntityLink):
-    """An IndustryChain includes a ChainNode in a contextual stage and position."""
-
-    position: PositiveInt | None = Field(
-        default=None,
-        description="Positive display or traversal position of the ChainNode within this IndustryChain.",
-    )
-    contextual_stage: ContextualStage | None = Field(
-        default=None,
-        description="Upstream, midstream or downstream stage within this IndustryChain only.",
-    )
-    review_status: ReviewStatus | None = Field(
-        default=None,
-        description="Whether the membership fact is a candidate or approved.",
-    )
-    status: RecordStatus | None = Field(
-        default=None,
-        description="Whether the membership is active or inactive.",
-    )
-
-
 ENTITY_TYPES = {"IndustryChain": IndustryChain}
 EDGE_TYPES = {
     "IndustryChainMappedToIndustry": IndustryChainMappedToIndustry,
     "IndustryChainMappedToConcept": IndustryChainMappedToConcept,
-    "IndustryChainPrimaryCountry": IndustryChainPrimaryCountry,
-    "IndustryChainContainsNode": IndustryChainContainsNode,
 }
 EDGE_TYPE_MAP = {
     ("IndustryChain", "Industry"): ["IndustryChainMappedToIndustry"],
     ("IndustryChain", "Concept"): ["IndustryChainMappedToConcept"],
-    ("IndustryChain", "Country"): ["IndustryChainPrimaryCountry"],
-    ("IndustryChain", "ChainNode"): ["IndustryChainContainsNode"],
 }

@@ -1,9 +1,9 @@
 """ChainNode extraction type and its outbound Graphiti relationships."""
 
-from pydantic import Field
+from pydantic import Field, PositiveInt
 
 from ontology.entities.base import TidewiseEntity, TidewiseEntityLink
-from ontology.enums import RecordStatus, ReviewStatus, SegmentKind
+from ontology.enums import ContextualStage, RecordStatus, ReviewStatus, SegmentKind
 
 
 class ChainNode(TidewiseEntity):
@@ -73,13 +73,36 @@ class ChainNodeDependsOn(ChainNodeTransmission):
     """The source ChainNode structurally depends on the target ChainNode."""
 
 
+class ChainNodeBelongsToIndustryChain(TidewiseEntityLink):
+    """A ChainNode belongs to an IndustryChain at one contextual stage and position."""
+
+    position: PositiveInt | None = Field(
+        default=None,
+        description="Positive display or traversal position of this ChainNode within the IndustryChain.",
+    )
+    contextual_stage: ContextualStage | None = Field(
+        default=None,
+        description="Upstream, midstream or downstream stage within this IndustryChain only.",
+    )
+    review_status: ReviewStatus | None = Field(
+        default=None,
+        description="Whether the membership fact is a candidate or approved.",
+    )
+    status: RecordStatus | None = Field(
+        default=None,
+        description="Whether the membership is active or inactive.",
+    )
+
+
 ENTITY_TYPES = {"ChainNode": ChainNode}
 EDGE_TYPES = {
+    "ChainNodeBelongsToIndustryChain": ChainNodeBelongsToIndustryChain,
     "ChainNodeInputTo": ChainNodeInputTo,
     "ChainNodeIsComponentOf": ChainNodeIsComponentOf,
     "ChainNodeDependsOn": ChainNodeDependsOn,
 }
 EDGE_TYPE_MAP = {
+    ("ChainNode", "IndustryChain"): ["ChainNodeBelongsToIndustryChain"],
     ("ChainNode", "ChainNode"): [
         "ChainNodeInputTo",
         "ChainNodeIsComponentOf",

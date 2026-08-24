@@ -6,7 +6,7 @@ the stable fields needed for entity resolution.
 
 ## Version
 
-The current catalog is `evidence-curation/v2` and contains:
+The current catalog is `evidence-curation/v3` and contains:
 
 - Entity types: `Country`, `Region`, `Organization`, `Industry`, `Concept`, `IndustryChain`,
   `ChainNode`.
@@ -23,6 +23,10 @@ never invent it.
 
 `IndustryChain.primary_country_id` is retained only as a canonical Data property. The ontology does
 not expose `IndustryChainPrimaryCountry` or an inverse ChainNode containment relation.
+`ChainNodeBelongsToIndustryChain` stores only the chain-scoped `contextual_stage` and `position`.
+The three directed ChainNode topology links store only their canonical Data edge ID and owning
+IndustryChain ID. Review, evidence and provenance fields remain in Tidewise Data and are not
+duplicated into Graphiti.
 
 Each `ontology/entities/<entity>.py` file owns one Entity model and all relationships for which that
 Entity is the source. The file exports its local `ENTITY_TYPES`, `EDGE_TYPES` and `EDGE_TYPE_MAP`;

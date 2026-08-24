@@ -13,4 +13,5 @@ PYTHONPATH="$repo_root" PYTHONPYCACHEPREFIX="$pycache_root" \
     tests.test_country_region_projection \
     tests.test_industry_projection \
     tests.test_concept_projection \
-    tests.test_industry_chain_projection
+    tests.test_industry_chain_projection \
+    tests.test_chainnode_initialization

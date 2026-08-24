@@ -1,9 +1,11 @@
 """ChainNode extraction type and its outbound Graphiti relationships."""
 
+from datetime import datetime
+
 from pydantic import Field, PositiveInt
 
 from ontology.entities.base import TidewiseEntity, TidewiseEntityLink
-from ontology.enums import ContextualStage, RecordStatus, ReviewStatus, SegmentKind
+from ontology.enums import ContextualStage, ReviewStatus
 
 
 class ChainNode(TidewiseEntity):
@@ -27,50 +29,10 @@ class ChainNode(TidewiseEntity):
         default=None,
         description="Whether the ChainNode fact is a candidate or approved.",
     )
-
-
-class ChainNodeTransmission(TidewiseEntityLink):
-    """Shared attributes of a directed relationship between two ChainNodes."""
-
-    mechanism: str | None = Field(
+    updated_at: datetime | None = Field(
         default=None,
-        min_length=1,
-        description="Direct structural mechanism connecting the source ChainNode to the target.",
+        description="Canonical Tidewise Data timestamp of the latest ChainNode fact change.",
     )
-    condition_note: str | None = Field(
-        default=None,
-        min_length=1,
-        description="Optional condition under which the relationship holds.",
-    )
-    segment_kind: SegmentKind | None = Field(
-        default=None,
-        description="Whether the relation is direct or compresses omitted intermediate steps.",
-    )
-    omitted_step_note: str | None = Field(
-        default=None,
-        min_length=1,
-        description="Required by Data for a compressed relation; describes omitted intermediate steps.",
-    )
-    review_status: ReviewStatus | None = Field(
-        default=None,
-        description="Whether the topology relation is a candidate or approved.",
-    )
-    status: RecordStatus | None = Field(
-        default=None,
-        description="Whether the topology relation is active or inactive.",
-    )
-
-
-class ChainNodeInputTo(ChainNodeTransmission):
-    """The source ChainNode supplies an input used by the target ChainNode."""
-
-
-class ChainNodeIsComponentOf(ChainNodeTransmission):
-    """The source ChainNode is a physical or functional component of the target ChainNode."""
-
-
-class ChainNodeDependsOn(ChainNodeTransmission):
-    """The source ChainNode structurally depends on the target ChainNode."""
 
 
 class ChainNodeBelongsToIndustryChain(TidewiseEntityLink):
@@ -78,19 +40,56 @@ class ChainNodeBelongsToIndustryChain(TidewiseEntityLink):
 
     position: PositiveInt | None = Field(
         default=None,
-        description="Positive display or traversal position of this ChainNode within the IndustryChain.",
+        description="Positive display or traversal position within this IndustryChain only.",
     )
     contextual_stage: ContextualStage | None = Field(
         default=None,
         description="Upstream, midstream or downstream stage within this IndustryChain only.",
     )
-    review_status: ReviewStatus | None = Field(
+
+
+class ChainNodeInputTo(TidewiseEntityLink):
+    """A chain-scoped fact that the source ChainNode supplies an input to the target."""
+
+    data_object_id: str | None = Field(
         default=None,
-        description="Whether the membership fact is a candidate or approved.",
+        pattern=r"^IGE[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+        description="Canonical Tidewise Data IndustryChainGraphEdge ID.",
     )
-    status: RecordStatus | None = Field(
+    industry_chain_id: str | None = Field(
         default=None,
-        description="Whether the membership is active or inactive.",
+        pattern=r"^ICH[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+        description="IndustryChain context in which this node-to-node fact holds.",
+    )
+
+
+class ChainNodeIsComponentOf(TidewiseEntityLink):
+    """A chain-scoped fact that the source is a component of the target ChainNode."""
+
+    data_object_id: str | None = Field(
+        default=None,
+        pattern=r"^IGE[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+        description="Canonical Tidewise Data IndustryChainGraphEdge ID.",
+    )
+    industry_chain_id: str | None = Field(
+        default=None,
+        pattern=r"^ICH[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+        description="IndustryChain context in which this node-to-node fact holds.",
+    )
+
+
+class ChainNodeDependsOn(TidewiseEntityLink):
+    """A chain-scoped fact that the source structurally depends on the target ChainNode."""
+
+    data_object_id: str | None = Field(
+        default=None,
+        pattern=r"^IGE[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+        description="Canonical Tidewise Data IndustryChainGraphEdge ID.",
+    )
+    industry_chain_id: str | None = Field(
+        default=None,
+        pattern=r"^ICH[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+        description="IndustryChain context in which this node-to-node fact holds.",
     )
 
 

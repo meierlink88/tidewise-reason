@@ -86,6 +86,8 @@ PYTHONPYCACHEPREFIX="$pycache_root" python3 -m py_compile \
   "$repo_root"/ontology/*.py \
   "$repo_root"/ontology/entities/*.py \
   "$repo_root"/projection/*.py \
+  "$repo_root"/initialization/*.py \
+  "$repo_root"/initialization/chainnode/*.py \
   "$repo_root"/ingestion/*.py \
   "$repo_root"/ingestion/episcode/*.py \
   "$repo_root"/ingestion/episcode/evidence/*.py \

@@ -63,7 +63,7 @@ class OntologyContractTest(unittest.TestCase):
             EDGE_TYPE_MAP[("IndustryChain", "Concept")],
             ["IndustryChainMappedToConcept"],
         )
-        self.assertEqual(ONTOLOGY_VERSION, "evidence-curation/v2")
+        self.assertEqual(ONTOLOGY_VERSION, "evidence-curation/v3")
 
     def test_graphiti_models_are_pydantic_classes_without_protected_fields(self) -> None:
         protected = {
@@ -98,17 +98,19 @@ class OntologyContractTest(unittest.TestCase):
         link = ChainNodeBelongsToIndustryChain(
             position=1,
             contextual_stage="upstream",
-            review_status="approved",
-            status="active",
         )
         self.assertEqual(link.contextual_stage.value, "upstream")
+        self.assertEqual(
+            set(ChainNodeBelongsToIndustryChain.model_fields),
+            {"position", "contextual_stage"},
+        )
         with self.assertRaises(ValidationError):
             ChainNodeBelongsToIndustryChain(position=0)
 
     def test_catalog_is_serializable_and_exposes_source_target_pairs(self) -> None:
         catalog = ontology_catalog()
         json.dumps(catalog)
-        self.assertEqual(catalog["version"], "evidence-curation/v2")
+        self.assertEqual(catalog["version"], "evidence-curation/v3")
         self.assertEqual(
             catalog["entity_links"]["CountryInRegion"]["source_targets"],
             [{"source": "Country", "target": "Region"}],
@@ -137,6 +139,15 @@ class OntologyContractTest(unittest.TestCase):
             EDGE_TYPE_MAP[("Organization", "Region")],
             ["OrganizationInRegion"],
         )
+
+    def test_chain_node_topology_links_expose_only_reasoning_identity(self) -> None:
+        expected = {"data_object_id", "industry_chain_id"}
+        for name in (
+            "ChainNodeInputTo",
+            "ChainNodeIsComponentOf",
+            "ChainNodeDependsOn",
+        ):
+            self.assertEqual(set(EDGE_TYPES[name].model_fields), expected)
 
 
 if __name__ == "__main__":

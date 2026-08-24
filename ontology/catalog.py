@@ -13,7 +13,7 @@ from ontology.entities import industry_chain
 from ontology.entities import organization
 from ontology.entities import region
 
-ONTOLOGY_VERSION = "evidence-curation/v2"
+ONTOLOGY_VERSION = "evidence-curation/v3"
 
 _ENTITY_SCHEMAS: tuple[ModuleType, ...] = (
     country,

@@ -35,6 +35,22 @@ def edge_uuid(relation_name: str, source_id: str, target_id: str) -> str:
     )
 
 
+def scoped_edge_uuid(
+    relation_name: str,
+    scope_id: str,
+    source_id: str,
+    target_id: str,
+) -> str:
+    """Derive a stable relationship identity when endpoints may repeat across scopes."""
+
+    return str(
+        uuid5(
+            NAMESPACE_URL,
+            f"urn:tidewise:relation:{relation_name}:{scope_id}:{source_id}:{target_id}",
+        )
+    )
+
+
 async def _embed_nodes(
     graphiti: Graphiti,
     nodes: list[EntityNode],

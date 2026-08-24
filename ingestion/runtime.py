@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from pydantic import Field, SecretStr, field_validator
 
 from ingestion.app import create_app
-from ingestion.episcode.evidence.graphiti_writer import GraphitiEvidenceEpisodeWriter
+from ingestion.episcode.evidence.graphiti import AuthoritativeEpisodeWriter
 from projection.runtime import GraphitiProviderConfig, create_graphiti
 
 
@@ -51,7 +51,7 @@ def create_runtime_app(config: IngestionRuntimeConfig) -> FastAPI:
     return create_app(
         state_path=config.state_path,
         service_token=config.service_token.get_secret_value(),
-        writer=GraphitiEvidenceEpisodeWriter(graphiti),
+        writer=AuthoritativeEpisodeWriter(graphiti),
         worker_poll_interval_seconds=config.worker_poll_interval_seconds,
         worker_batch_size=config.worker_batch_size,
     )

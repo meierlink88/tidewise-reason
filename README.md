@@ -150,12 +150,16 @@ bash infra/graphiti/stop-api.sh
 
 The API binds to <http://127.0.0.1:8890> by default. Its delivery state is stored in the dedicated
 `tidewise-reason_graphiti-api-state` volume; stopping the service does not delete that volume.
+Evidence uses a Reason-owned controlled Episode writer: Graphiti extracts typed mention candidates,
+but only already-projected nodes with an authoritative `data_object_id` can receive `MENTIONS`.
+Unmatched candidates remain in the immutable Episode content and never become graph Entities.
+Evidence Episodic nodes carry `episode_kind=EVIDENCE`; future Event Episodic nodes must use
+`EVENT`, and downstream Analysis Context retrieval must select only Event Episodes.
 The live Evidence check is idempotent: it selects an already-published Data Service Evidence that
 mentions the projected `人工智能` Concept, then verifies both the completed Episodic node and its
-`MENTIONS` link to that canonical `data_object_id` instead of creating a synthetic fact.
+complete `MENTIONS` target set instead of checking only one expected canonical link.
 
 ## UAT
 
-UAT deploys only the official OpenSPG Server/KAG runtime and Tidewise Reasoning-owned content. It
-consumes MySQL, Neo4j and MinIO managed independently by `tidewise-ai`, and never changes their
-lifecycle. See [the Reason UAT deployment contract](infra/uat/README.md).
+Reason currently has no UAT publication workflow or UAT CI gate. Dormant deployment design remains
+available only as a recoverable reference under [`infra/uat/`](infra/uat/).

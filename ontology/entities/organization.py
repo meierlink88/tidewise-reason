@@ -9,7 +9,11 @@ from ontology.enums import BindingPowerLevel, InfluenceRating
 
 
 class Organization(TidewiseEntity):
-    """An authoritative multilateral organization, alliance, association or mechanism."""
+    """A reviewed international alliance, multilateral organization, association or mechanism.
+
+    Examples include the United Nations, NATO, ASEAN and OPEC. It is never a company, listed
+    issuer, media business, domestic enterprise or ordinary government department.
+    """
 
     data_object_id: str | None = Field(
         default=None,

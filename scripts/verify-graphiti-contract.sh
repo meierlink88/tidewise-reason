@@ -71,6 +71,11 @@ if rg -n 'graphiti_core[.]utils[.]bulk_utils|add_nodes_and_edges_bulk' \
   exit 1
 fi
 
+if rg -n '[.]add_episode[(]' "$repo_root/ingestion/episcode/evidence"; then
+  echo 'Evidence ingestion delegates to Graphiti add_episode and can create non-authoritative Entities' >&2
+  exit 1
+fi
+
 if rg -n 'docker compose .*down|--remove-orphans|docker volume rm' \
   "$repo_root/infra/graphiti" "$repo_root/scripts/install-graphiti-runtime.sh"; then
   echo 'Graphiti lifecycle includes a destructive or unscoped command' >&2
@@ -84,6 +89,7 @@ PYTHONPYCACHEPREFIX="$pycache_root" python3 -m py_compile \
   "$repo_root"/ingestion/*.py \
   "$repo_root"/ingestion/episcode/*.py \
   "$repo_root"/ingestion/episcode/evidence/*.py \
+  "$repo_root"/ingestion/episcode/evidence/graphiti/*.py \
   "$repo_root"/tests/test_ontology_contract.py
 bash "$repo_root/scripts/test-ontology.sh"
 bash "$repo_root/scripts/test-projection.sh"

@@ -109,6 +109,20 @@ class OntologyContractTest(unittest.TestCase):
             [{"source": "Country", "target": "Region"}],
         )
 
+    def test_region_and_organization_descriptions_exclude_domestic_entities(self) -> None:
+        catalog = ontology_catalog()
+
+        region_description = " ".join(
+            catalog["entities"]["Region"]["description"].split()
+        )
+        organization_description = " ".join(
+            catalog["entities"]["Organization"]["description"].split()
+        )
+        self.assertIn("province", region_description)
+        self.assertIn("Sichuan", region_description)
+        self.assertIn("company", organization_description)
+        self.assertIn("listed issuer", organization_description)
+
     def test_each_edge_is_owned_by_its_source_entity_schema(self) -> None:
         self.assertEqual(
             EDGE_TYPE_MAP[("Country", "Region")],

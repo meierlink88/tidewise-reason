@@ -13,7 +13,7 @@ PYTHONPATH="$repo_root" PYTHONPYCACHEPREFIX="$pycache_root" \
     tests.test_evidence_episode_api \
     tests.test_evidence_episode_worker \
     tests.test_evidence_episode_worker_loop \
-    tests.test_evidence_graphiti_writer \
+    tests.test_authoritative_evidence_graphiti_writer \
     tests.test_graphiti_group_contract \
     tests.test_ingestion_runtime \
     tests.test_ingestion_compose_contract \

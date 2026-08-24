@@ -2,7 +2,8 @@
 
 - Status: Accepted
 - Date: 2026-08-24
-- Issue: [#14](https://github.com/meierlink88/tidewise-reason/issues/14)
+- Issues: [#14](https://github.com/meierlink88/tidewise-reason/issues/14),
+  [#16](https://github.com/meierlink88/tidewise-reason/issues/16)
 
 ## Context
 
@@ -28,6 +29,18 @@ DTO, a lossless canonical JSON conversion, a Reason-owned SQLite delivery store,
 lease recovery and a constrained Graphiti writer. The public boundary never accepts Graphiti types,
 ontology definitions or provider configuration.
 
+The Evidence writer does not invoke Graphiti's monolithic `add_episode`, because an unmatched
+extracted candidate is otherwise persisted as a new Entity. It reuses Graphiti 0.29.3 extraction,
+clients and temporal Episode representation, then resolves candidates only to already-projected
+nodes with an authoritative `data_object_id` and matching ontology label. It atomically persists
+the Episode and deterministic `MENTIONS` links to those canonical targets. Unmatched candidates are
+not graph facts. Region and Organization type descriptions explicitly exclude national
+subdivisions and companies, while authoritative resolution remains the hard enforcement layer.
+Each Evidence Episodic node is explicitly marked with `episode_kind=EVIDENCE` and its
+formal Evidence ID as `domain_object_id`. Graphiti `EpisodeType.json` remains only a content-format
+marker. Future Event ingestion must use `episode_kind=EVENT`, and downstream Analysis
+Context assembly must exclude Evidence Episodes rather than relying on names or source descriptions.
+
 The Graphiti database/group value is fixed to `neo4j` for both canonical projection and Episode
 ingestion. Existing nodes and relationships are migrated in place by changing only their
 `group_id`; no graph node, relationship or volume is deleted. The business namespace remains a
@@ -44,6 +57,10 @@ SQLite volume. It does not modify the legacy OpenSPG `reason-server`.
 - Same Evidence ID and payload is idempotent; reuse of an ID with different content fails closed.
 - Provider failures do not block the publishing HTTP call and can recover after process restarts.
 - Evidence extraction can resolve canonical facts because both use the real `neo4j` graph scope.
+- Evidence text cannot expand the authoritative Entity universe; Data-owned projection remains the
+  only path that creates canonical Entity instances.
+- Evidence ingestion intentionally does not persist LLM-derived Entity-to-Entity facts. Event
+  curation and downstream reasoning remain separate pipelines.
 - A single API replica owns the SQLite worker state. A distributed queue is deferred until a
   multi-replica runtime is required.
 

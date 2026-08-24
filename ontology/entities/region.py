@@ -7,7 +7,11 @@ from ontology.enums import RegionType
 
 
 class Region(TidewiseEntity):
-    """A stable geographic, multilateral or investment region; not a country."""
+    """A reviewed global or cross-country analysis region such as East Asia or Middle Africa.
+
+    It may be geographic, continental, multilateral or investment-defined. It is never a country
+    or a national subdivision such as a province, state, city or county; Sichuan is not a Region.
+    """
 
     data_object_id: str | None = Field(
         default=None,

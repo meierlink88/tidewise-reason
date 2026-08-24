@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from ingestion.episcode.evidence.graphiti_writer import GRAPHITI_GROUP_ID
 from projection.authoritative_writer import GROUP_ID
+from projection.runtime import GRAPHITI_GROUP_ID
 
 
 class GraphitiGroupContractTest(unittest.TestCase):

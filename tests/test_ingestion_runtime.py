@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from ingestion.runtime import create_runtime_app, load_ingestion_config
@@ -51,7 +52,7 @@ class IngestionRuntimeConfigTest(unittest.TestCase):
         with patch("projection.runtime.Graphiti") as graphiti_type, patch(
             "ingestion.runtime.create_app"
         ) as app_factory:
-            graphiti_type.return_value = object()
+            graphiti_type.return_value = SimpleNamespace(driver=object())
             app_factory.return_value = object()
             create_runtime_app(config)
 

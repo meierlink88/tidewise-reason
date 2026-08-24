@@ -48,49 +48,31 @@ class ChainNodeBelongsToIndustryChain(TidewiseEntityLink):
     )
 
 
-class ChainNodeInputTo(TidewiseEntityLink):
+class _ChainScopedTopologyLink(TidewiseEntityLink):
+    """Private shared identity contract; never registered as a Graphiti relation type."""
+
+    data_object_id: str | None = Field(
+        default=None,
+        pattern=r"^IGE[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+        description="Canonical Tidewise Data IndustryChainGraphEdge ID.",
+    )
+    industry_chain_id: str | None = Field(
+        default=None,
+        pattern=r"^ICH[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+        description="IndustryChain context in which this node-to-node fact holds.",
+    )
+
+
+class ChainNodeInputTo(_ChainScopedTopologyLink):
     """A chain-scoped fact that the source ChainNode supplies an input to the target."""
 
-    data_object_id: str | None = Field(
-        default=None,
-        pattern=r"^IGE[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
-        description="Canonical Tidewise Data IndustryChainGraphEdge ID.",
-    )
-    industry_chain_id: str | None = Field(
-        default=None,
-        pattern=r"^ICH[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
-        description="IndustryChain context in which this node-to-node fact holds.",
-    )
 
-
-class ChainNodeIsComponentOf(TidewiseEntityLink):
+class ChainNodeIsComponentOf(_ChainScopedTopologyLink):
     """A chain-scoped fact that the source is a component of the target ChainNode."""
 
-    data_object_id: str | None = Field(
-        default=None,
-        pattern=r"^IGE[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
-        description="Canonical Tidewise Data IndustryChainGraphEdge ID.",
-    )
-    industry_chain_id: str | None = Field(
-        default=None,
-        pattern=r"^ICH[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
-        description="IndustryChain context in which this node-to-node fact holds.",
-    )
 
-
-class ChainNodeDependsOn(TidewiseEntityLink):
+class ChainNodeDependsOn(_ChainScopedTopologyLink):
     """A chain-scoped fact that the source structurally depends on the target ChainNode."""
-
-    data_object_id: str | None = Field(
-        default=None,
-        pattern=r"^IGE[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
-        description="Canonical Tidewise Data IndustryChainGraphEdge ID.",
-    )
-    industry_chain_id: str | None = Field(
-        default=None,
-        pattern=r"^ICH[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
-        description="IndustryChain context in which this node-to-node fact holds.",
-    )
 
 
 ENTITY_TYPES = {"ChainNode": ChainNode}

@@ -5,11 +5,14 @@ import unittest
 from datetime import UTC, datetime
 
 from initialization.chainnode.projection import (
+    CUSTOM_RELATIONSHIP_PROPERTIES,
+    GRAPHITI_RELATIONSHIP_PROPERTIES,
     ChainNodeFacts,
     DataChainNodeDTO,
     DataGraphEdgeDTO,
     DataMembershipDTO,
     build_plan,
+    has_exact_relationship_properties,
     parse_snapshot,
 )
 from projection.runtime import ProjectionError
@@ -116,6 +119,35 @@ class ChainNodeInitializationTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ProjectionError, "invalid ChainNode snapshot record"):
             parse_snapshot([line])
+
+    def test_graph_verification_uses_exact_relationship_property_allowlists(self) -> None:
+        membership_keys = (
+            GRAPHITI_RELATIONSHIP_PROPERTIES
+            | CUSTOM_RELATIONSHIP_PROPERTIES["ChainNodeBelongsToIndustryChain"]
+        )
+        topology_keys = (
+            GRAPHITI_RELATIONSHIP_PROPERTIES
+            | CUSTOM_RELATIONSHIP_PROPERTIES["ChainNodeInputTo"]
+        )
+
+        self.assertEqual(
+            membership_keys - GRAPHITI_RELATIONSHIP_PROPERTIES,
+            {"position", "contextual_stage"},
+        )
+        self.assertEqual(
+            topology_keys - GRAPHITI_RELATIONSHIP_PROPERTIES,
+            {"data_object_id", "industry_chain_id"},
+        )
+        self.assertTrue(
+            has_exact_relationship_properties(
+                "ChainNodeBelongsToIndustryChain", membership_keys
+            )
+        )
+        self.assertFalse(
+            has_exact_relationship_properties(
+                "ChainNodeBelongsToIndustryChain", membership_keys | {"provenance"}
+            )
+        )
 
 
 if __name__ == "__main__":

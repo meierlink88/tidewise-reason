@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections import Counter
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Literal
 
@@ -32,34 +33,59 @@ from projection.authoritative_writer import (
 from projection.runtime import ProjectionError
 
 
-RELATION_NAMES = {
-    "input_to": "ChainNodeInputTo",
-    "is_component_of": "ChainNodeIsComponentOf",
-    "depends_on": "ChainNodeDependsOn",
+@dataclass(frozen=True)
+class TopologyRelationSpec:
+    name: str
+    model: type[BaseModel]
+    fact_template: str
+
+
+TOPOLOGY_RELATIONS = {
+    "input_to": TopologyRelationSpec(
+        name="ChainNodeInputTo",
+        model=ChainNodeInputTo,
+        fact_template="在{chain}中，{source}向{target}提供投入",
+    ),
+    "is_component_of": TopologyRelationSpec(
+        name="ChainNodeIsComponentOf",
+        model=ChainNodeIsComponentOf,
+        fact_template="在{chain}中，{source}是{target}的组成部分",
+    ),
+    "depends_on": TopologyRelationSpec(
+        name="ChainNodeDependsOn",
+        model=ChainNodeDependsOn,
+        fact_template="在{chain}中，{source}依赖{target}",
+    ),
 }
-RELATION_MODELS = {
-    "input_to": ChainNodeInputTo,
-    "is_component_of": ChainNodeIsComponentOf,
-    "depends_on": ChainNodeDependsOn,
-}
-RELATION_TEXT = {
-    "input_to": "向",
-    "is_component_of": "是",
-    "depends_on": "依赖",
-}
-RELATION_SUFFIX = {
-    "input_to": "提供投入",
-    "is_component_of": "的组成部分",
-    "depends_on": "",
-}
+TOPOLOGY_RELATION_NAMES = tuple(spec.name for spec in TOPOLOGY_RELATIONS.values())
 STAGE_TEXT = {
     ContextualStage.UPSTREAM: "上游",
     ContextualStage.MIDSTREAM: "中游",
     ContextualStage.DOWNSTREAM: "下游",
 }
 OWNED_EDGE_NAMES = frozenset(
-    {"ChainNodeBelongsToIndustryChain", *RELATION_NAMES.values()}
+    {"ChainNodeBelongsToIndustryChain", *TOPOLOGY_RELATION_NAMES}
 )
+GRAPHITI_RELATIONSHIP_PROPERTIES = frozenset(
+    {
+        "uuid",
+        "source_node_uuid",
+        "target_node_uuid",
+        "name",
+        "fact",
+        "fact_embedding",
+        "group_id",
+        "episodes",
+        "created_at",
+    }
+)
+CUSTOM_RELATIONSHIP_PROPERTIES = {
+    "ChainNodeBelongsToIndustryChain": frozenset({"position", "contextual_stage"}),
+    **{
+        name: frozenset({"data_object_id", "industry_chain_id"})
+        for name in TOPOLOGY_RELATION_NAMES
+    },
+}
 
 
 def _is_utc(value: datetime) -> bool:
@@ -213,11 +239,18 @@ def parse_snapshot(lines: Iterable[str]) -> ChainNodeFacts:
 
 
 def _topology_fact(edge: DataGraphEdgeDTO) -> str:
-    prefix = f"在{edge.industry_chain_name}中，{edge.from_node_name}"
-    return (
-        f"{prefix}{RELATION_TEXT[edge.relation_type]}"
-        f"{edge.to_node_name}{RELATION_SUFFIX[edge.relation_type]}"
+    return TOPOLOGY_RELATIONS[edge.relation_type].fact_template.format(
+        chain=edge.industry_chain_name,
+        source=edge.from_node_name,
+        target=edge.to_node_name,
     )
+
+
+def has_exact_relationship_properties(name: str, property_keys: Iterable[str]) -> bool:
+    """Accept only Graphiti fields plus the custom allowlist for this relation type."""
+
+    expected = GRAPHITI_RELATIONSHIP_PROPERTIES | CUSTOM_RELATIONSHIP_PROPERTIES[name]
+    return set(property_keys) == expected
 
 
 def build_plan(facts: ChainNodeFacts) -> ChainNodePlan:
@@ -227,7 +260,7 @@ def build_plan(facts: ChainNodeFacts) -> ChainNodePlan:
         "ChainNodeBelongsToIndustryChain"
     ]:
         raise ProjectionError("ontology does not permit ChainNode membership")
-    if EDGE_TYPE_MAP.get(("ChainNode", "ChainNode")) != list(RELATION_NAMES.values()):
+    if EDGE_TYPE_MAP.get(("ChainNode", "ChainNode")) != list(TOPOLOGY_RELATION_NAMES):
         raise ProjectionError("ontology does not permit the required ChainNode topology links")
 
     nodes_by_id: dict[str, DataChainNodeDTO] = {}
@@ -345,9 +378,10 @@ def build_plan(facts: ChainNodeFacts) -> ChainNodePlan:
             raise ProjectionError(f"topology source name differs from node snapshot: {topology.id}")
         if nodes_by_id[topology.to_chain_node_id].name != topology.to_node_name:
             raise ProjectionError(f"topology target name differs from node snapshot: {topology.id}")
-        relation_name = RELATION_NAMES[topology.relation_type]
+        relation_spec = TOPOLOGY_RELATIONS[topology.relation_type]
+        relation_name = relation_spec.name
         try:
-            attributes = RELATION_MODELS[topology.relation_type](
+            attributes = relation_spec.model(
                 data_object_id=topology.id,
                 industry_chain_id=topology.industry_chain_id,
             ).model_dump(mode="json", exclude_none=True)
@@ -375,7 +409,7 @@ def build_plan(facts: ChainNodeFacts) -> ChainNodePlan:
     return ChainNodePlan(
         chain_node_count=len(nodes),
         membership_count=len(memberships),
-        relation_counts={name: relation_counts[name] for name in RELATION_NAMES.values()},
+        relation_counts={name: relation_counts[name] for name in TOPOLOGY_RELATION_NAMES},
         nodes=tuple(nodes),
         edges=tuple(edges),
         industry_chain_ids=frozenset(industry_chain_ids),
@@ -497,18 +531,6 @@ def verify_state(
     if set(actual_edges) != set(expected_edges) or len(edges) != len(expected_edges):
         problems.append("ChainNode relationship set differs from Data snapshot")
 
-    forbidden = {
-        "mechanism",
-        "condition_note",
-        "segment_kind",
-        "omitted_step_note",
-        "review_status",
-        "status",
-        "evidence_ids",
-        "source_name",
-        "source_url",
-        "verified_at",
-    }
     for edge_uuid_value, planned in expected_edges.items():
         actual = actual_edges.get(edge_uuid_value)
         if actual is None:
@@ -525,8 +547,8 @@ def verify_state(
         if actual["embedding_dimension"] != 1024 or not actual["has_created_at"]:
             problems.append(f"relationship vector or created_at is invalid: {edge_uuid_value}")
             break
-        if forbidden.intersection(actual["property_keys"]):
-            problems.append(f"forbidden relationship attributes were projected: {edge_uuid_value}")
+        if not has_exact_relationship_properties(planned.name, actual["property_keys"]):
+            problems.append(f"relationship property set differs: {edge_uuid_value}")
             break
         if set(actual["source_labels"]) != {"Entity", "ChainNode"}:
             problems.append(f"relationship source is not ChainNode: {edge_uuid_value}")

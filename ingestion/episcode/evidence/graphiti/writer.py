@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
@@ -83,6 +84,18 @@ RETURN episode.uuid AS uuid, size($mentions) AS linked
 EntityExtractor = Callable[[Graphiti, EpisodicNode], Awaitable[list[EntityNode]]]
 
 
+@dataclass(frozen=True)
+class ExistingEpisode:
+    """Persisted state needed to decide whether an Evidence Episode needs repair."""
+
+    uuid: str
+    content: str
+    created_at: datetime
+    complete: bool
+    episode_kind: str | None
+    domain_object_id: str | None
+
+
 def _as_utc_datetime(value: object) -> datetime:
     native: object
     if isinstance(value, datetime):
@@ -135,7 +148,7 @@ class AuthoritativeEpisodeWriter:
 
     async def _find_existing(
         self, name: str
-    ) -> tuple[str, str, datetime, bool, str | None, str | None] | None:
+    ) -> ExistingEpisode | None:
         records, _, _ = await self._graphiti.driver.execute_query(
             FIND_EXISTING_EPISODE,
             name=name,
@@ -147,13 +160,17 @@ class AuthoritativeEpisodeWriter:
         if not records:
             return None
         record = records[0]
-        return (
-            str(record["uuid"]),
-            str(record["content"]),
-            _as_utc_datetime(record["created_at"]),
-            bool(record["complete"]),
-            str(record["episode_kind"]) if record.get("episode_kind") is not None else None,
-            (
+        return ExistingEpisode(
+            uuid=str(record["uuid"]),
+            content=str(record["content"]),
+            created_at=_as_utc_datetime(record["created_at"]),
+            complete=bool(record["complete"]),
+            episode_kind=(
+                str(record["episode_kind"])
+                if record.get("episode_kind") is not None
+                else None
+            ),
+            domain_object_id=(
                 str(record["domain_object_id"])
                 if record.get("domain_object_id") is not None
                 else None
@@ -163,20 +180,14 @@ class AuthoritativeEpisodeWriter:
     async def write(self, episode: RawEpisode) -> str:
         existing = await self._find_existing(episode.name)
         if existing is not None:
-            (
-                episode_uuid,
-                content,
-                created_at,
-                complete,
-                episode_kind,
-                domain_object_id,
-            ) = existing
-            if content != episode.content:
+            episode_uuid = existing.uuid
+            created_at = existing.created_at
+            if existing.content != episode.content:
                 raise RuntimeError("Graphiti Episode identity has conflicting content")
             if (
-                complete
-                and episode_kind == EVIDENCE_EPISODE_KIND
-                and domain_object_id == episode.name
+                existing.complete
+                and existing.episode_kind == EVIDENCE_EPISODE_KIND
+                and existing.domain_object_id == episode.name
             ):
                 return episode_uuid
         else:

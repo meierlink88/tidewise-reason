@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import unittest
 from datetime import UTC, datetime
 
@@ -8,7 +9,14 @@ from graphiti_core.nodes import EntityNode
 from neo4j.time import DateTime as Neo4jDateTime
 
 from ingestion.episcode.evidence.converter import to_raw_episode
-from ingestion.episcode.evidence.graphiti.writer import AuthoritativeEpisodeWriter
+from ingestion.episcode.evidence.graphiti import resolver as resolver_module
+from ingestion.episcode.evidence.graphiti import writer as writer_module
+from ingestion.episcode.evidence.graphiti.writer import (
+    AuthoritativeEpisodeWriter,
+    EXTRACTION_INSTRUCTIONS,
+)
+from ontology import ENTITY_TYPES
+from projection.country_region import DataCountryDTO, DataRegionDTO, build_plan
 from tests.test_evidence_episode_converter import evidence
 
 
@@ -35,6 +43,7 @@ class FakeDriver:
         self.existing_records = existing_records or []
         self.episodes: dict[str, dict[str, object]] = {}
         self.mentions: dict[str, set[str]] = {}
+        self.last_write: dict[str, object] | None = None
 
     async def execute_query(self, query: str, **kwargs):
         if "controlled_episode_existing" in query:
@@ -74,6 +83,7 @@ class FakeDriver:
                 )
             return records, None, None
         if "controlled_episode_write" in query:
+            self.last_write = kwargs
             episode_uuid = kwargs["episode_uuid"]
             self.episodes[episode_uuid] = {
                 "name": kwargs["name"],
@@ -101,6 +111,36 @@ def candidate(name: str, entity_type: str) -> EntityNode:
         labels=[entity_type],
         summary="",
     )
+
+
+def projected_country_entity() -> dict[str, object]:
+    """Build the resolver fixture through the reviewed authoritative projection."""
+
+    region = DataRegionDTO(
+        id="REG11111111-1111-4111-8111-111111111111",
+        code="M49_030",
+        name="东亚",
+        name_en="Eastern Asia",
+        region_type="GEOGRAPHIC",
+    )
+    country = DataCountryDTO(
+        id="COU11111111-1111-4111-8111-111111111111",
+        code="CN",
+        name="中国",
+        name_en="China",
+        strategic_positioning="全球制造业与消费市场",
+        key_resources="完整产业体系",
+        regions=[region],
+    )
+    node = build_plan([country]).triplets[0].source
+    return {
+        "uuid": node.uuid,
+        "name": node.name,
+        "labels": ["Entity", *node.labels],
+        "data_object_id": node.attributes["data_object_id"],
+        "code": node.attributes["code"],
+        "aliases": [],
+    }
 
 
 async def no_semantic_matches(
@@ -172,6 +212,90 @@ class AuthoritativeEpisodeWriterTest(unittest.TestCase):
         episode_uuid = asyncio.run(writer.write(to_raw_episode(evidence())))
 
         self.assertEqual(graphiti.driver.mentions[episode_uuid], {"concept-ai"})
+
+    def test_stable_code_resolves_a_reviewed_projection_entity(self) -> None:
+        country_entity = projected_country_entity()
+        graphiti = FakeGraphiti(
+            FakeDriver(canonical_entities={str(country_entity["uuid"]): country_entity})
+        )
+
+        async def extract(_: object, __: object) -> list[EntityNode]:
+            return [candidate("CN", "Country")]
+
+        writer = AuthoritativeEpisodeWriter(  # type: ignore[arg-type]
+            graphiti,
+            extract_entities=extract,
+        )
+
+        episode_uuid = asyncio.run(writer.write(to_raw_episode(evidence())))
+
+        self.assertEqual(
+            graphiti.driver.mentions[episode_uuid],
+            {str(country_entity["uuid"])},
+        )
+
+    def test_wrong_type_generic_and_unmatched_candidates_never_enter_mutation(self) -> None:
+        graphiti = FakeGraphiti()
+        generic = EntityNode(
+            name="四川",
+            group_id="neo4j",
+            labels=["Entity"],
+            summary="",
+        )
+
+        async def extract(_: object, __: object) -> list[EntityNode]:
+            return [
+                candidate("人工智能", "Industry"),
+                generic,
+                candidate("不存在的国家", "Country"),
+            ]
+
+        writer = AuthoritativeEpisodeWriter(  # type: ignore[arg-type]
+            graphiti,
+            extract_entities=extract,
+            resolve_semantically=no_semantic_matches,
+        )
+
+        episode_uuid = asyncio.run(writer.write(to_raw_episode(evidence())))
+
+        self.assertEqual(graphiti.driver.mentions[episode_uuid], set())
+        self.assertIsNotNone(graphiti.driver.last_write)
+        assert graphiti.driver.last_write is not None
+        self.assertEqual(graphiti.driver.last_write["mentions"], [])
+        self.assertEqual(graphiti.driver.last_write["target_uuids"], [])
+
+    def test_pinned_graphiti_adapter_signatures_match_controlled_calls(self) -> None:
+        extract_parameters = list(
+            inspect.signature(writer_module.extract_nodes).parameters
+        )
+        resolve_parameters = list(
+            inspect.signature(resolver_module.resolve_extracted_nodes).parameters
+        )
+
+        self.assertEqual(
+            extract_parameters,
+            [
+                "clients",
+                "episode",
+                "previous_episodes",
+                "entity_types",
+                "excluded_entity_types",
+                "custom_extraction_instructions",
+            ],
+        )
+        self.assertEqual(
+            resolve_parameters,
+            [
+                "clients",
+                "extracted_nodes",
+                "episode",
+                "previous_episodes",
+                "entity_types",
+                "existing_nodes_override",
+            ],
+        )
+        self.assertTrue(EXTRACTION_INSTRUCTIONS)
+        self.assertTrue(ENTITY_TYPES)
 
     def test_semantic_retrieval_can_only_select_an_existing_canonical_entity(self) -> None:
         graphiti = FakeGraphiti()

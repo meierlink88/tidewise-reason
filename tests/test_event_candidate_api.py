@@ -118,6 +118,10 @@ class EventCandidateAPITest(unittest.TestCase):
         self.assertTrue(second.json()["replayed"])
 
     def test_openapi_declares_bearer_auth_and_error_responses(self) -> None:
+        swagger = self.client.get("/docs")
+        self.assertEqual(swagger.status_code, 200)
+        self.assertIn("swagger-ui", swagger.text)
+
         contract = self.client.get("/openapi.json").json()
         security_schemes = contract["components"]["securitySchemes"]
         self.assertIn("HTTPBearer", security_schemes)

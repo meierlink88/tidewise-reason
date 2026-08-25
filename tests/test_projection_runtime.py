@@ -23,7 +23,6 @@ class ProjectionRuntimeConfigTest(unittest.TestCase):
             "GRAPHITI_EMBEDDING_DIM": "1024",
             "TIDEWISE_DATA_BASE_URL": "http://127.0.0.1:9011",
             "TIDEWISE_DATA_SERVICE_TOKEN": "data-token",
-            "REASON_API_PORT": "8890",
             "REASON_API_SERVICE_TOKEN": "reason-token",
             "REASON_WORKER_POLL_INTERVAL_SECONDS": "1",
             "REASON_WORKER_BATCH_SIZE": "5",

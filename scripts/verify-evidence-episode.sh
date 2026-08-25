@@ -15,7 +15,6 @@ source "$env_file"
 set +a
 require_reason_api_token
 
-api_port="${REASON_API_PORT:-8890}"
 anchor_name='人工智能'
 data_url="${TIDEWISE_DATA_BASE_URL%/}/api/data/v1/evidences?page=1&page_size=100"
 evidence_response="$(
@@ -36,7 +35,7 @@ curl --fail --silent --show-error \
   -H "Authorization: Bearer ${REASON_API_SERVICE_TOKEN}" \
   -H 'Content-Type: application/json' \
   --data-binary "$request_body" \
-  "http://127.0.0.1:${api_port}/api/reason/v1/evidence-episodes" \
+  "http://127.0.0.1:8890/api/reason/v1/evidence-episodes" \
   --output /dev/null
 
 episode_uuid=''
@@ -44,7 +43,7 @@ for _ in {1..150}; do
   status_response="$(
     curl --fail --silent --show-error \
       -H "Authorization: Bearer ${REASON_API_SERVICE_TOKEN}" \
-      "http://127.0.0.1:${api_port}/api/reason/v1/evidence-episodes/${evidence_id}"
+      "http://127.0.0.1:8890/api/reason/v1/evidence-episodes/${evidence_id}"
   )"
   processing_status="$(
     python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])' \

@@ -34,7 +34,7 @@ services:
       neo4j:
         condition: service_healthy
     ports:
-      - '127.0.0.1:${REASON_API_PORT:-8890}:8890'
+      - '127.0.0.1:8890:8890'
     environment:
       NEO4J_USER: '${NEO4J_USER:?NEO4J_USER is required}'
       NEO4J_PASSWORD: '${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}'

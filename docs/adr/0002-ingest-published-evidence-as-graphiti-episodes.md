@@ -4,6 +4,7 @@
 - Date: 2026-08-24
 - Issues: [#14](https://github.com/meierlink88/tidewise-reason/issues/14),
   [#16](https://github.com/meierlink88/tidewise-reason/issues/16)
+- Legacy-runtime reference superseded by [ADR 0006](0006-retire-openspg-runtime-and-fix-reason-port.md)
 
 ## Context
 
@@ -47,8 +48,8 @@ ingestion. Existing nodes and relationships are migrated in place by changing on
 Reason application concern rather than a Neo4j Community database name.
 
 The API runs as the separate `api` service in the `tidewise-reasoning` Compose project, with the
-fixed container name `reason-graphiti-api`, a loopback port, private bearer token and dedicated
-SQLite volume. It does not modify the legacy OpenSPG `reason-server`.
+fixed container name `reason-graphiti-api`, fixed loopback port `8890`, private bearer token and
+dedicated SQLite volume. The legacy OpenSPG runtime was later removed by ADR 0006.
 
 ## Consequences
 

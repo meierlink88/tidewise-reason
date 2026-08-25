@@ -24,6 +24,7 @@ api = config["services"]["api"]
 assert api["container_name"] == "reason-graphiti-api"
 assert api["ports"][0]["host_ip"] == "127.0.0.1"
 assert api["ports"][0]["target"] == 8890
+assert api["ports"][0]["published"] == "8890"
 assert config["volumes"]["graphiti-api-state"]["name"] == "tidewise-reason_graphiti-api-state"
 PY
 
@@ -37,6 +38,7 @@ grep -q -- '--python 3.12.11' "$repo_root/scripts/install-graphiti-runtime.sh"
 grep -q -- '--require-hashes' "$repo_root/scripts/install-graphiti-runtime.sh"
 grep -q 'TIDEWISE_DATA_BASE_URL' "$repo_root/infra/graphiti/.env.example"
 grep -q 'REASON_API_SERVICE_TOKEN' "$repo_root/infra/graphiti/.env.example"
+! grep -q 'REASON_API_PORT' "$repo_root/infra/graphiti/.env.example"
 grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/start.sh"
 grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/stop.sh"
 grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/verify.sh"

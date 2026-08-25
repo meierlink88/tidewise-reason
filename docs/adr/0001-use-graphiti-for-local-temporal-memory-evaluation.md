@@ -3,6 +3,7 @@
 - Status: Accepted for local evaluation
 - Date: 2026-08-21
 - Issue: [#12](https://github.com/meierlink88/tidewise-reason/issues/12)
+- Runtime-retention decision superseded by [ADR 0006](0006-retire-openspg-runtime-and-fix-reason-port.md)
 
 ## Context
 
@@ -76,7 +77,8 @@ Tidewise AI application services.
 
 ## Alternatives considered
 
-- Keep OpenSPG + KAG active locally: retained as a reversible evaluation, but not the active runtime.
+- Keep OpenSPG + KAG active locally: originally retained as a reversible evaluation, then retired
+  by ADR 0006 after the project was taken out of service.
 - Use Graphiti MCP as the entire reasoning engine: rejected because it exposes memory/search tools,
   not deterministic multi-hop domain traversal.
 - Let the Agent query Neo4j freely: rejected because it bypasses Graphiti temporal/provenance

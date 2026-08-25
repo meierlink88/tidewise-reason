@@ -1,9 +1,10 @@
 # Reasoning Evaluation Context
 
-This context evaluates how Tidewise investment-research semantics can be projected into candidate
-graph and reasoning engines, and identifies any authoritative domain facts or relations that the
-owning system must add before the reasoning flow can be complete. OpenSPG is a retained, reversible
-evaluation; Graphiti is the active local evaluation and never becomes the authoritative fact owner.
+This context defines how Tidewise investment-research semantics are projected into the active
+Graphiti-backed Reasoning Server and identifies any authoritative domain facts or relations that
+the owning system must add before the reasoning flow can be complete. OpenSPG runtime support is
+retired; its remaining design and Schema files are historical, non-executable research records.
+Graphiti never becomes the authoritative fact owner.
 
 ## Language
 

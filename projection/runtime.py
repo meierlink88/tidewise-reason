@@ -31,7 +31,6 @@ ENV_KEY = re.compile(r"^[A-Z][A-Z0-9_]*$")
 GRAPHITI_GROUP_ID = "neo4j"
 REASON_SERVICE_ENV_KEYS = frozenset(
     {
-        "REASON_API_PORT",
         "REASON_API_SERVICE_TOKEN",
         "REASON_STATE_PATH",
         "REASON_WORKER_POLL_INTERVAL_SECONDS",

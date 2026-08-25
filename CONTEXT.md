@@ -1,9 +1,10 @@
 # Reasoning Evaluation Context
 
-This context evaluates how Tidewise investment-research semantics can be projected into candidate
-graph and reasoning engines, and identifies any authoritative domain facts or relations that the
-owning system must add before the reasoning flow can be complete. OpenSPG is a retained, reversible
-evaluation; Graphiti is the active local evaluation and never becomes the authoritative fact owner.
+This context defines how Tidewise investment-research semantics are projected into the active
+Graphiti-backed Reasoning Server and identifies any authoritative domain facts or relations that
+the owning system must add before the reasoning flow can be complete. OpenSPG runtime support is
+retired; its remaining design and Schema files are historical, non-executable research records.
+Graphiti never becomes the authoritative fact owner.
 
 ## Language
 
@@ -90,6 +91,12 @@ curation and accepted as the factual starting point of downstream reasoning. Liv
 evaluation Events use the same domain language; their source, public-knowledge and ingestion times
 remain distinct and auditable through upstream Evidence links.
 _Avoid_: Research Event, Scenario Event, Signal, forecast, investment conclusion
+
+**Event Candidate Submission**:
+Agent OS 已从 Evidence 提炼的一次现实动作候选及其 Evidence IDs，由 Reasoning
+持久化为可重放工作流输入。它不是 Event 领域对象，不进入 Graphiti；只有判定为新事件并由
+Data 发布后的正式 Event 才投影。
+_Avoid_: Agent 提交 Event ID、Candidate 图节点、用请求指纹做语义去重
 
 **Analysis Anchor**:
 The stable Entity whose connected facts and relations define the bounded scope of one analysis.

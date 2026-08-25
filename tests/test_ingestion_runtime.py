@@ -24,6 +24,8 @@ def runtime_environment() -> dict[str, str]:
         "GRAPHITI_EMBEDDING_DIM": "1024",
         "REASON_API_SERVICE_TOKEN": "agent-os-token",
         "REASON_STATE_PATH": "/var/lib/tidewise-reason/state.sqlite3",
+        "TIDEWISE_DATA_BASE_URL": "http://data-service:8080",
+        "TIDEWISE_DATA_SERVICE_TOKEN": "data-token",
         "UNRELATED_PROCESS_VALUE": "ignored",
     }
 
@@ -52,7 +54,9 @@ class IngestionRuntimeConfigTest(unittest.TestCase):
         with patch("projection.runtime.Graphiti") as graphiti_type, patch(
             "ingestion.runtime.create_app"
         ) as app_factory:
-            graphiti_type.return_value = SimpleNamespace(driver=object())
+            graphiti_type.return_value = SimpleNamespace(
+                driver=object(), clients=SimpleNamespace(llm_client=object())
+            )
             app_factory.return_value = object()
             create_runtime_app(config)
 

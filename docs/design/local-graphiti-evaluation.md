@@ -6,16 +6,17 @@ The active local evaluation uses `graphiti-core==0.29.3` with a dedicated Neo4j 
 5.26.28 provider. The reasoning repository owns this provider because no Tidewise AI application
 reads from or writes to Neo4j.
 
-This is not an OpenSPG data migration. The legacy OpenSPG Server container is stopped and removed;
-its image, MySQL state and MinIO state remain available. The user explicitly authorized deletion of
-the legacy `tidewise-reason_neo4j-data` and `tidewise-reason_neo4j-logs` volumes on 2026-08-21, so
-the former OpenSPG ABox is no longer locally recoverable from those volumes.
+This is not an OpenSPG data migration. ADR 0006 removes the retired OpenSPG local and UAT runtime
+definitions from the repository without deleting external images, database state or named volumes.
+The user explicitly authorized deletion of the legacy `tidewise-reason_neo4j-data` and
+`tidewise-reason_neo4j-logs` volumes on 2026-08-21, so the former OpenSPG ABox is no longer locally
+recoverable from those volumes.
 
 ## Runtime boundaries
 
 - The Compose project is `tidewise-reasoning`; `neo4j` owns the graph provider and `api` owns
   Evidence Episode ingestion.
-- Ports 7474 and 7687 bind to loopback.
+- Ports 7474 and 7687 bind to loopback. The Reasoning Server is fixed at loopback port 8890.
 - The image and Graphiti package are version pinned.
 - The Python environment, model credentials, Data Service credential, Graphiti data and generated
   analysis artifacts stay outside Git.
@@ -24,7 +25,7 @@ the former OpenSPG ABox is no longer locally recoverable from those volumes.
   For the accepted ingestion path, Agent OS pushes the complete record to Reason only after Data
   publication; Reason never enters another service's database or container. ADR 0002 owns this
   newer boundary.
-- This local decision does not alter the UAT OpenSPG-specialized Neo4j provider.
+- This repository no longer carries an OpenSPG UAT deployment bundle.
 
 Graphiti requires Neo4j 5.26 or later. Neo4j 5.26 is selected over FalkorDB for this first PoC to
 minimize backend variability and retain the more mature Cypher, Browser, driver and operational

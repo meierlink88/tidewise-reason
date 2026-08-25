@@ -34,7 +34,7 @@ services:
       neo4j:
         condition: service_healthy
     ports:
-      - '127.0.0.1:${REASON_API_PORT:-8890}:8890'
+      - '127.0.0.1:8890:8890'
     environment:
       NEO4J_USER: '${NEO4J_USER:?NEO4J_USER is required}'
       NEO4J_PASSWORD: '${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}'
@@ -52,6 +52,8 @@ services:
       REASON_STATE_PATH: '/var/lib/tidewise-reason/state.sqlite3'
       REASON_WORKER_POLL_INTERVAL_SECONDS: '${REASON_WORKER_POLL_INTERVAL_SECONDS:-1}'
       REASON_WORKER_BATCH_SIZE: '${REASON_WORKER_BATCH_SIZE:-5}'
+      TIDEWISE_DATA_BASE_URL: '${TIDEWISE_DATA_BASE_URL:?TIDEWISE_DATA_BASE_URL is required}'
+      TIDEWISE_DATA_SERVICE_TOKEN: '${TIDEWISE_DATA_SERVICE_TOKEN:?TIDEWISE_DATA_SERVICE_TOKEN is required}'
     volumes:
       - graphiti-api-state:/var/lib/tidewise-reason
     healthcheck:

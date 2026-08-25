@@ -1,5 +1,8 @@
 # Local OpenSPG + KAG deployment
 
+> Status: Retired historical record. The executable runtime and referenced lifecycle scripts were
+> removed by [ADR 0006](../adr/0006-retire-openspg-runtime-and-fix-reason-port.md).
+
 ## Outcome
 
 Run the official OpenSPG/KAG Server `latest` image locally in the shared Docker Compose project

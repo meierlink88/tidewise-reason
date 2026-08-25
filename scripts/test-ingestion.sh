@@ -17,4 +17,8 @@ PYTHONPATH="$repo_root" PYTHONPYCACHEPREFIX="$pycache_root" \
     tests.test_graphiti_group_contract \
     tests.test_ingestion_runtime \
     tests.test_ingestion_compose_contract \
-    tests.test_projection_runtime
+    tests.test_projection_runtime \
+    tests.test_event_candidate_api \
+    tests.test_event_resolution \
+    tests.test_event_data_client \
+    tests.test_event_graphiti_projector

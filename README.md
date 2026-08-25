@@ -1,80 +1,42 @@
-# Tidewise Reason: OpenSPG + KAG
+# Tidewise Reason
 
-Local OpenSPG and KAG evaluation environment. The official OpenSPG Server `latest` image is the
-sole runtime release. Reason Server joins the shared `tidewise-app` project and consumes MySQL,
-Neo4j and MinIO from `tidewise-infra`.
+Tidewise Reasoning Server and its Graphiti temporal graph provider. The standalone FastAPI service
+owns controlled Evidence/Event ingestion, Event resolution and Graphiti projection. Tidewise Data
+remains the authoritative owner of domain facts.
 
 ## Start
 
 ```bash
-./scripts/start.sh
+mkdir -p .runtime
+cp infra/graphiti/.env.example .runtime/graphiti.env
+chmod 0600 .runtime/graphiti.env
+# Replace every placeholder before continuing.
+bash scripts/install-graphiti-runtime.sh
+bash infra/graphiti/start.sh
+bash infra/graphiti/start-api.sh
 ```
-
-Open <http://127.0.0.1:8887> and sign in with the official local demo account:
-
-- Username: `openspg`
-- Password: `openspg@kag`
-
-`start.sh` pulls the official image before recreating only the `server` service. The bundled KAG
-developer commands are available inside the container:
-
-```bash
-docker compose exec -e KAG_PROJECT_HOST_ADDR=http://127.0.0.1:8887 server kag --help
-docker compose exec -e KAG_PROJECT_HOST_ADDR=http://127.0.0.1:8887 server knext --help
-```
-
-This repository does not build OpenSPG or KAG from source and does not inject a replacement JAR or
-wheel into the official image.
-
-The official image currently ships a `kag_thinker_pipeline` file that omits the
-`rewrite_prompt` required by its bundled planner. Its `kag_clarification` prompt also leaves
-Action numbering implicit even though the bundled parser accepts only `ActionN:` labels; generic
-models can therefore produce valid-looking plans that fail with `sub query not equal logic form
-num`. Compose mounts the narrowly corrected
-[`runtime-overrides/kag/pipelineconf/kag_thinker.yaml`](runtime-overrides/kag/pipelineconf/kag_thinker.yaml)
-over that single file as read-only. The override supplies the missing rewrite prompt and reuses
-the bundled `default_logic_form_plan` prompt, whose examples explicitly emit `StepN:`/`ActionN:`.
-Because the configured DeepSeek model does not emit the KAG-Thinker-specific `<search>` protocol,
-the pipeline keeps `KAGModelPlanner` for multi-step planning but uses the bundled standard KAG
-hybrid retrieval executor for each planned retrieval step. Its optional per-step LLM summary is
-disabled; the pipeline's final generator remains responsible for synthesizing the answer.
-The image, executable JAR and KAG wheel remain unchanged.
-
-## Tidewise Schema
-
-The OpenSPG project `Tidewise` currently uses its pre-projection default Schema. The manual-review
-import candidate in [`schemas/Tidewise.schema`](schemas/Tidewise.schema) preserves those KAG
-foundation types and represents all 16 active PostgreSQL TBox entity types. It has not been
-submitted to OpenSPG, and no PostgreSQL ABox facts have been imported.
 
 ## Services
 
-This repository starts only the `reason-server` OpenSPG/KAG Web container. The remaining endpoints
-belong to the independently operated shared infrastructure stack.
+The Reasoning Server port is deliberately fixed in Compose and is not configurable through the
+private runtime environment.
 
 | Service | Local address |
 | --- | --- |
-| OpenSPG/KAG Web | <http://127.0.0.1:8887> |
+| Reasoning API | <http://127.0.0.1:8890> |
+| Swagger UI | <http://127.0.0.1:8890/docs> |
+| OpenAPI document | <http://127.0.0.1:8890/openapi.json> |
 | Neo4j Browser | <http://127.0.0.1:7474> |
-| MinIO Console | <http://127.0.0.1:9001> |
-| MySQL | `127.0.0.1:3306` |
 
 ## Stop
 
 ```bash
-./scripts/stop.sh
+bash infra/graphiti/stop-api.sh
+bash infra/graphiti/stop.sh
 ```
 
-The stop script removes only Reason Server. It never stops shared infrastructure or removes its
-persistent volumes. Do not run unscoped `docker compose down` or `--remove-orphans` in this
-repository.
-
-The base UI can run without a model provider. Building a knowledge base and using KAG inference
-requires configuring a generation model and an embedding model in the product UI.
-
-See [the local deployment design](docs/design/local-openspg-kag.md) and
-[the official runtime policy](docs/design/official-openspg-kag-runtime.md) for boundaries,
-extension seams and recovery.
+These service-scoped commands do not remove Neo4j or Reasoning Server state volumes. Do not run
+unscoped `docker compose down`, `--remove-orphans`, or volume-removal commands in this repository.
 
 ## Graphiti Ontology
 
@@ -176,8 +138,9 @@ bash scripts/verify-evidence-episode.sh
 bash infra/graphiti/stop-api.sh
 ```
 
-The API binds to <http://127.0.0.1:8890> by default. Its delivery state is stored in the dedicated
-`tidewise-reason_graphiti-api-state` volume; stopping the service does not delete that volume.
+The API binds to the fixed address <http://127.0.0.1:8890>. Its delivery state is stored in the
+dedicated `tidewise-reason_graphiti-api-state` volume; stopping the service does not delete that
+volume.
 Evidence uses a Reason-owned controlled Episode writer: Graphiti extracts typed mention candidates,
 but only already-projected nodes with an authoritative `data_object_id` can receive `MENTIONS`.
 Unmatched candidates remain in the immutable Episode content and never become graph Entities.
@@ -187,7 +150,7 @@ The live Evidence check is idempotent: it selects an already-published Data Serv
 mentions the projected `人工智能` Concept, then verifies both the completed Episodic node and its
 complete `MENTIONS` target set instead of checking only one expected canonical link.
 
-## UAT
+## Deployment boundary
 
-Reason currently has no UAT publication workflow or UAT CI gate. Dormant deployment design remains
-available only as a recoverable reference under [`infra/uat/`](infra/uat/).
+Reason currently has no UAT publication workflow or UAT CI gate. The retired OpenSPG local and UAT
+runtime definitions are not part of this repository's executable surface.

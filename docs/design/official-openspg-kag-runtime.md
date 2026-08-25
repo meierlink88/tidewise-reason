@@ -1,5 +1,8 @@
 # Official OpenSPG and KAG runtime
 
+> Status: Retired historical record. The executable runtime and referenced lifecycle scripts were
+> removed by [ADR 0006](../adr/0006-retire-openspg-runtime-and-fix-reason-port.md).
+
 ## Runtime authority
 
 Tidewise Reason consumes the official

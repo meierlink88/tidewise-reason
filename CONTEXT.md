@@ -91,6 +91,12 @@ evaluation Events use the same domain language; their source, public-knowledge a
 remain distinct and auditable through upstream Evidence links.
 _Avoid_: Research Event, Scenario Event, Signal, forecast, investment conclusion
 
+**Event Candidate Submission**:
+Agent OS 已从 Evidence 提炼的一次现实动作候选及其 Evidence IDs，由 Reasoning
+持久化为可重放工作流输入。它不是 Event 领域对象，不进入 Graphiti；只有判定为新事件并由
+Data 发布后的正式 Event 才投影。
+_Avoid_: Agent 提交 Event ID、Candidate 图节点、用请求指纹做语义去重
+
 **Analysis Anchor**:
 The stable Entity whose connected facts and relations define the bounded scope of one analysis.
 _Avoid_: Storyline, user prompt, temporary result, unbounded graph traversal

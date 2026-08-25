@@ -11,6 +11,10 @@ from typing import AsyncIterator
 from fastapi import FastAPI, HTTPException, status
 
 from ingestion.http import RequestBodyLimitMiddleware
+from ingestion.episcode.event.api import create_router as create_event_router
+from ingestion.episcode.event.module import EventCandidateModule
+from ingestion.episcode.event.store import EventCandidateStore
+from ingestion.episcode.event.worker import run_worker as run_event_worker
 from ingestion.episcode.evidence.api import create_router
 from ingestion.episcode.evidence.delivery_store import EvidenceEpisodeDeliveryStore
 from ingestion.episcode.evidence.module import EpisodeWriter, EvidenceEpisodeModule
@@ -28,6 +32,7 @@ def create_app(
     writer: EpisodeWriter | None = None,
     worker_poll_interval_seconds: float = 1.0,
     worker_batch_size: int = 5,
+    event_resolver: object | None = None,
 ) -> FastAPI:
     if not service_token.strip():
         raise ValueError("service token must not be blank")
@@ -35,6 +40,7 @@ def create_app(
         raise ValueError("writer is required when the worker is enabled")
     store = EvidenceEpisodeDeliveryStore(state_path)
     module = EvidenceEpisodeModule(store, writer=writer)
+    event_module = EventCandidateModule(EventCandidateStore(state_path), event_resolver)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -52,12 +58,28 @@ def create_app(
             if start_worker
             else None
         )
+        event_worker_task = (
+            asyncio.create_task(
+                run_event_worker(
+                    event_module,
+                    stop_event=stop_event,
+                    poll_interval_seconds=worker_poll_interval_seconds,
+                    batch_size=worker_batch_size,
+                ),
+                name="event-candidate-worker",
+            )
+            if start_worker and event_resolver is not None
+            else None
+        )
         try:
             yield
         finally:
             if worker_task is not None:
                 stop_event.set()
                 await worker_task
+            if event_worker_task is not None:
+                stop_event.set()
+                await event_worker_task
             close = getattr(writer, "close", None)
             if close is not None:
                 close_result = close()
@@ -70,7 +92,13 @@ def create_app(
         max_bytes=EVIDENCE_REQUEST_BODY_LIMIT,
         path_prefix="/api/reason/v1/evidence-episodes",
     )
+    app.add_middleware(
+        RequestBodyLimitMiddleware,
+        max_bytes=EVIDENCE_REQUEST_BODY_LIMIT,
+        path_prefix="/api/reason/v1/event-candidates",
+    )
     app.include_router(create_router(module, service_token=service_token))
+    app.include_router(create_event_router(event_module, service_token=service_token))
 
     @app.get("/healthz", include_in_schema=False)
     def health() -> dict[str, str]:
@@ -87,4 +115,5 @@ def create_app(
         return {"status": "ready"}
 
     app.state.evidence_episode_module = module
+    app.state.event_candidate_module = event_module
     return app

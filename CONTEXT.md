@@ -68,8 +68,11 @@ _Avoid_: Schema, type catalog, TBox
 **Controlled Variable**:
 A globally reusable, versioned change dimension that a Signal may apply to one permitted Analysis
 Anchor type. Its stable identity, definition, measurement basis, optional unit, applicability and
-maintenance owner belong to the Variable catalog. Direction, impact period, confidence and the
-concrete Anchor belong to a Signal and never create Anchor-specific Variable copies.
+maintenance owner belong to the Variable catalog. Its role distinguishes a fundamental observation
+from an investment-assessment dimension; its primary group narrows candidate retrieval by causal
+channel. Direction, impact period, confidence and the concrete Anchor belong to a Signal and never
+create Anchor-specific Variable copies. Type applicability is metadata and does not establish a
+Variable-to-Anchor relationship.
 _Avoid_: Signal direction, current value, permanent Anchor attribute, per-Anchor Variable duplicate
 
 **GeopoliticRivalry**:

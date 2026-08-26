@@ -1,12 +1,13 @@
 # Tidewise Graphiti Ontology
 
 `ontology` is the Reason-owned extraction contract for Graphiti. Tidewise Data remains the owner of
-all projected Entity and Link facts; these Pydantic models only constrain LLM extraction and expose
-the stable fields needed for entity resolution.
+Data-projected Entity and Link facts, while Tidewise Reason owns the versioned Variable catalog.
+These Pydantic models constrain LLM extraction and expose the stable fields needed for entity
+resolution.
 
 ## Version
 
-The current catalog is `reasoning-ontology/v3` and contains:
+The current catalog is `reasoning-ontology/v4` and contains:
 
 - Entity types: `Country`, `Region`, `Organization`, `Industry`, `Concept`, `IndustryChain`,
   `ChainNode`, `Variable`, `GeopoliticRivalry`, `MacroEconomic`.
@@ -32,7 +33,9 @@ duplicated into Graphiti.
 `Variable` is one globally reusable controlled dimension from the Reason-owned versioned catalog.
 `allowed_anchor_types` limits where a Variable is meaningful; it never creates Anchor-specific
 Variable identities or static Variable-to-Anchor facts. Direction, impact period and the concrete
-Anchor belong to a later Signal Fact.
+Anchor belong to a later Signal Fact. `variable_role` separates fundamental observations from later
+investment-assessment dimensions, while `variable_group` narrows candidate retrieval by causal
+channel. Neither property creates graph relationships.
 
 `GeopoliticRivalry` is a stable geopolitical topic blueprint rather than one concrete Event.
 `MacroEconomic` is a reusable policy action such as a rate hike or fiscal stimulus; its `category`

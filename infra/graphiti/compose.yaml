@@ -52,7 +52,7 @@ services:
       REASON_STATE_PATH: '/var/lib/tidewise-reason/state.sqlite3'
       REASON_WORKER_POLL_INTERVAL_SECONDS: '${REASON_WORKER_POLL_INTERVAL_SECONDS:-1}'
       REASON_WORKER_BATCH_SIZE: '${REASON_WORKER_BATCH_SIZE:-5}'
-      TIDEWISE_DATA_BASE_URL: '${TIDEWISE_DATA_BASE_URL:?TIDEWISE_DATA_BASE_URL is required}'
+      TIDEWISE_DATA_BASE_URL: 'http://data-service:9011'
       TIDEWISE_DATA_SERVICE_TOKEN: '${TIDEWISE_DATA_SERVICE_TOKEN:?TIDEWISE_DATA_SERVICE_TOKEN is required}'
     volumes:
       - graphiti-api-state:/var/lib/tidewise-reason

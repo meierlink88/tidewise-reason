@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+from collections.abc import Awaitable, Callable, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
@@ -33,6 +34,7 @@ def create_app(
     worker_poll_interval_seconds: float = 1.0,
     worker_batch_size: int = 5,
     event_resolver: object | None = None,
+    dependency_readiness: Sequence[Callable[[], Awaitable[bool]]] = (),
 ) -> FastAPI:
     if not service_token.strip():
         raise ValueError("service token must not be blank")
@@ -112,6 +114,16 @@ def create_app(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="not ready",
             )
+        for check in dependency_readiness:
+            try:
+                dependency_ready = await check()
+            except Exception:
+                dependency_ready = False
+            if not dependency_ready:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="not ready",
+                )
         return {"status": "ready"}
 
     app.state.evidence_episode_module = module

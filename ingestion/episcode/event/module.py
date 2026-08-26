@@ -2,13 +2,55 @@
 
 from __future__ import annotations
 
+import logging
+import traceback
+from uuid import uuid4
+
 from ingestion.episcode.event.contracts import EventCandidateAcceptance, EventCandidateRequest, EventCandidateStatus
 from ingestion.episcode.event.store import EventCandidateStore
 from ingestion.episcode.event.resolver import (
     ComparisonUnavailable,
+    EventHistoryUnavailable,
     ProjectionPending,
     PublicationRejected,
 )
+
+
+logger = logging.getLogger(__name__)
+
+
+def _safe_exception_diagnostics(exc: BaseException) -> tuple[str, str]:
+    """Return useful type and frame data without exception messages or arguments."""
+
+    error_types: list[str] = []
+    frames: list[str] = []
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        error_types.append(
+            f"{type(current).__module__}.{type(current).__qualname__}"
+        )
+        frames.extend(
+            f"{frame.filename}:{frame.lineno}:{frame.name}"
+            for frame in traceback.extract_tb(current.__traceback__)[-3:]
+        )
+        current = current.__cause__ or current.__context__
+    return "<-".join(error_types), "|".join(frames)
+
+
+def _log_resolution_failure(submission, exc: BaseException, *, stage: str) -> None:
+    error_types, frames = _safe_exception_diagnostics(exc)
+    logger.error(
+        "event_candidate_resolution_failed submission_id=%s attempt=%s "
+        "stage=%s diagnostic_id=%s error_types=%s frames=%s",
+        submission.submission_id,
+        submission.attempt_count,
+        stage,
+        uuid4(),
+        error_types,
+        frames,
+    )
 
 
 class EventCandidateModule:
@@ -43,11 +85,17 @@ class EventCandidateModule:
                     ),
                 )
             except ProjectionPending as exc:
+                _log_resolution_failure(
+                    submission, exc, stage="GRAPHITI_EVENT_PROJECTION"
+                )
                 self._store.projection_pending(submission.submission_id, exc.outcome, exc.event,
                                                terminal=submission.attempt_count >= self._max_attempts,
                                                retry_delay_seconds=self._retry_delay_seconds)
                 continue
-            except ComparisonUnavailable:
+            except ComparisonUnavailable as exc:
+                _log_resolution_failure(
+                    submission, exc, stage="EVENT_SEMANTIC_COMPARISON"
+                )
                 if submission.attempt_count >= self._max_attempts:
                     self._store.needs_review(
                         submission.submission_id,
@@ -61,7 +109,21 @@ class EventCandidateModule:
                         retry_delay_seconds=self._retry_delay_seconds,
                     )
                 continue
-            except PublicationRejected:
+            except EventHistoryUnavailable as exc:
+                _log_resolution_failure(
+                    submission, exc, stage="DATA_EVENT_HISTORY_RECALL"
+                )
+                self._store.fail(
+                    submission.submission_id,
+                    "DATA_EVENT_HISTORY_UNAVAILABLE",
+                    terminal=submission.attempt_count >= self._max_attempts,
+                    retry_delay_seconds=self._retry_delay_seconds,
+                )
+                continue
+            except PublicationRejected as exc:
+                _log_resolution_failure(
+                    submission, exc, stage="DATA_EVENT_PUBLICATION"
+                )
                 self._store.fail(
                     submission.submission_id,
                     "DATA_EVENT_PUBLICATION_REJECTED",
@@ -69,7 +131,8 @@ class EventCandidateModule:
                     retry_delay_seconds=self._retry_delay_seconds,
                 )
                 continue
-            except Exception:
+            except Exception as exc:
+                _log_resolution_failure(submission, exc, stage="EVENT_RESOLUTION")
                 self._store.fail(submission.submission_id, "EVENT_RESOLUTION_FAILED",
                                  terminal=submission.attempt_count >= self._max_attempts,
                                  retry_delay_seconds=self._retry_delay_seconds)

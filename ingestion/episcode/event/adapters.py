@@ -21,7 +21,7 @@ from ingestion.episcode.event.contracts import (
     HistoricalEvent,
     PairComparison,
 )
-from ingestion.episcode.event.resolver import PublicationRejected
+from ingestion.episcode.event.resolver import EventHistoryUnavailable, PublicationRejected
 from ingestion.episcode.evidence.graphiti.resolver import CanonicalEntityResolver, resolve_with_graphiti_vectors
 from ontology import ENTITY_TYPES
 from projection.runtime import GRAPHITI_GROUP_ID
@@ -77,6 +77,23 @@ class DataEventClient:
         self._headers = {"Authorization": f"Bearer {service_token}"}
         self._timeout = timeout_seconds
         self._transport = transport
+
+    async def ready(self) -> bool:
+        """Validate connectivity and the authoritative Event page contract."""
+
+        params = {"page": 1, "page_size": 1, "status": "ACTIVE"}
+        try:
+            async with httpx.AsyncClient(
+                timeout=self._timeout,
+                headers=self._headers,
+                transport=self._transport,
+            ) as client:
+                response = await client.get(self._url, params=params)
+                response.raise_for_status()
+                DataEventPageEnvelope.model_validate(response.json())
+        except Exception:
+            return False
+        return True
 
     async def list_candidates(self, candidate: EventCandidateDTO) -> list[HistoricalEvent]:
         anchor = candidate.occurred_at or candidate.announced_at or candidate.semantic.effective_at
@@ -210,7 +227,9 @@ class CompositeEventHistory:
             for event in await self._data.list_candidates(candidate):
                 result[event.id] = event
         except Exception as exc:
-            raise RuntimeError("authoritative Data Event history retrieval failed") from exc
+            raise EventHistoryUnavailable(
+                "authoritative Data Event history retrieval failed"
+            ) from exc
         return sorted(result.values(), key=lambda item: _identity_rank(candidate, item))[
             :MAX_RESOLUTION_CANDIDATES
         ]

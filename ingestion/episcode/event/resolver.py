@@ -28,12 +28,22 @@ class DataPublisher(Protocol):
 
 
 class EventProjector(Protocol):
-    async def project(self, event: HistoricalEvent) -> None: ...
+    async def project(self, event: HistoricalEvent) -> str: ...
 
 
 class ProjectionPending(RuntimeError):
     def __init__(self, event: HistoricalEvent, outcome: EventResolutionOutcome):
         super().__init__("Graphiti Event projection is pending")
+        self.event, self.outcome = event, outcome
+
+
+class AnalysisSchedulingUnavailable(RuntimeError):
+    """Native projection succeeded but the durable analysis enqueue did not."""
+
+
+class AnalysisSchedulingPending(RuntimeError):
+    def __init__(self, event: HistoricalEvent, outcome: EventResolutionOutcome):
+        super().__init__("Event Analysis scheduling is pending")
         self.event, self.outcome = event, outcome
 
 
@@ -82,6 +92,16 @@ def potentially_same(candidate, historical) -> bool:
 class EventResolver:
     def __init__(self, history: HistoryRetriever, comparator: EventComparator, publisher: DataPublisher, projector: EventProjector):
         self._history, self._comparator, self._publisher, self._projector = history, comparator, publisher, projector
+
+    async def _project(
+        self, event: HistoricalEvent, outcome: EventResolutionOutcome
+    ) -> None:
+        try:
+            await self._projector.project(event)
+        except AnalysisSchedulingUnavailable as exc:
+            raise AnalysisSchedulingPending(event, outcome) from exc
+        except Exception as exc:
+            raise ProjectionPending(event, outcome) from exc
 
     async def _evaluate_history(self, candidate, history: list[HistoricalEvent]) -> EventResolutionOutcome | None:
         exact_ids = {
@@ -166,10 +186,7 @@ class EventResolver:
             outcome = EventResolutionOutcome(decision=decision, event_id=published_event.id,
                 event_created=True, evidence_link_result="CREATED", graph_projection_status="SUCCEEDED",
                 reason_codes=["NO_SAME_OCCURRENCE_FOUND"], matched_event_ids=[])
-            try:
-                await self._projector.project(published_event)
-            except Exception as exc:
-                raise ProjectionPending(published_event, outcome) from exc
+            await self._project(published_event, outcome)
             return outcome
 
         if getattr(submission, "publication_started", False):
@@ -186,10 +203,7 @@ class EventResolver:
             )
             if on_published is not None:
                 on_published(outcome, published)
-            try:
-                await self._projector.project(published)
-            except Exception as exc:
-                raise ProjectionPending(published, outcome) from exc
+            await self._project(published, outcome)
             return outcome
 
         try:
@@ -226,8 +240,5 @@ class EventResolver:
             reason_codes=["NO_SAME_OCCURRENCE_FOUND"], matched_event_ids=[])
         if on_published is not None:
             on_published(outcome, published)
-        try:
-            await self._projector.project(published)
-        except Exception as exc:
-            raise ProjectionPending(published, outcome) from exc
+        await self._project(published, outcome)
         return outcome

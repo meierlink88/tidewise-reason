@@ -12,8 +12,8 @@ from uuid import uuid4
 
 from ingestion.episcode.event.contracts import (
     DecisionSummary,
-    EventCandidateRequest,
     EventCandidateDTO,
+    EventCandidateRequest,
     EventCandidateStatus,
     EventResolutionOutcome,
     HistoricalEvent,
@@ -176,6 +176,41 @@ class EventCandidateStore:
                  "GRAPHITI_EVENT_PROJECTION_FAILED", None if terminal else (now + timedelta(seconds=retry_delay_seconds)).isoformat(),
                  now.isoformat() if terminal else None,
                  submission_id),
+            )
+
+    def analysis_scheduling_pending(
+        self,
+        submission_id: str,
+        outcome: EventResolutionOutcome,
+        event: HistoricalEvent,
+        *,
+        terminal: bool,
+        retry_delay_seconds: int,
+    ) -> None:
+        """Retry analysis enqueue without misreporting the completed graph projection."""
+
+        now = datetime.now(UTC)
+        with self._connect() as connection:
+            connection.execute(
+                """UPDATE event_candidate_submissions SET status=?, decision=?, event_id=?,
+                    event_created=1, evidence_link_result='CREATED',
+                    graph_projection_status='SUCCEEDED', reason_codes_json=?,
+                    matched_event_ids_json=?, published_event_json=?, last_error=?,
+                    lease_until=NULL, next_attempt_at=?, completed_at=? WHERE submission_id=?""",
+                (
+                    "FAILED" if terminal else "PROJECTING",
+                    outcome.decision,
+                    event.id,
+                    json.dumps(outcome.reason_codes),
+                    json.dumps(outcome.matched_event_ids),
+                    event.model_dump_json(),
+                    "EVENT_ANALYSIS_SCHEDULING_FAILED",
+                    None
+                    if terminal
+                    else (now + timedelta(seconds=retry_delay_seconds)).isoformat(),
+                    now.isoformat() if terminal else None,
+                    submission_id,
+                ),
             )
 
     def published(

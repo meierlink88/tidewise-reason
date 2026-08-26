@@ -19,9 +19,12 @@ from ingestion.episcode.event.contracts import (
     HistoricalEvent,
     PairComparison,
 )
-from ingestion.episcode.event.resolver import EventHistoryUnavailable, PublicationRejected
+from ingestion.episcode.event.graphiti.projector import EVENT_SOURCE_DESCRIPTION
+from ingestion.episcode.event.resolver import (
+    EventHistoryUnavailable,
+    PublicationRejected,
+)
 from projection.runtime import GRAPHITI_GROUP_ID
-
 
 EVENTS_PATH = "/api/data/v1/events"
 MAX_DATA_HISTORY = 1_000
@@ -156,9 +159,10 @@ MATCH (target:Entity {group_id: $group_id})
 WHERE target.data_object_id IS NOT NULL
   AND (target.name = mention OR target.code = mention OR mention IN coalesce(target.aliases, []))
 WITH collect(DISTINCT target.uuid) AS target_uuids
-MATCH (episode:Episodic {group_id: $group_id, episode_kind: 'EVENT'})-[:MENTIONS]->(target:Entity)
-WHERE target.uuid IN target_uuids AND episode.domain_object_id IS NOT NULL
-RETURN DISTINCT episode.domain_object_id AS event_id, episode.content AS content
+MATCH (episode:Episodic {group_id: $group_id})-[:MENTIONS]->(target:Entity)
+WHERE target.uuid IN target_uuids
+  AND episode.source_description = $source_description
+RETURN DISTINCT episode.content AS content
 LIMIT $limit
 """.strip()
 
@@ -198,16 +202,18 @@ class CompositeEventHistory:
                           candidate.semantic.action, *candidate.semantic.objects])
         result: dict[str, HistoricalEvent] = {}
         try:
-            episodes = await self._graphiti.driver.search_interface.episode_fulltext_search(
-                self._graphiti.driver,
-                query,
-                SearchFilters(),
-                [GRAPHITI_GROUP_ID],
-                MAX_RESOLUTION_CANDIDATES,
-            )
-            for episode in episodes:
-                if event := _historical_from_content(episode.content):
-                    result[event.id] = event
+            search_interface = self._graphiti.driver.search_interface
+            if search_interface is not None:
+                episodes = await search_interface.episode_fulltext_search(
+                    self._graphiti.driver,
+                    query,
+                    SearchFilters(),
+                    [GRAPHITI_GROUP_ID],
+                    MAX_RESOLUTION_CANDIDATES,
+                )
+                for episode in episodes:
+                    if event := _historical_from_content(episode.content):
+                        result[event.id] = event
         except Exception:
             pass
 
@@ -220,16 +226,12 @@ class CompositeEventHistory:
                     *candidate.semantic.jurisdictions,
                 ],
                 group_id=GRAPHITI_GROUP_ID,
+                source_description=EVENT_SOURCE_DESCRIPTION,
                 limit=MAX_RESOLUTION_CANDIDATES,
                 routing_="r",
             )
             for record in records:
-                event_id = record.get("event_id")
-                if event_id is not None and (
-                    event := _historical_from_content(
-                        str(record["content"]), expected_event_id=str(event_id)
-                    )
-                ):
+                if event := _historical_from_content(str(record["content"])):
                     result[event.id] = event
         except Exception:
             pass

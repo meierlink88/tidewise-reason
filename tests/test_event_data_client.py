@@ -144,7 +144,7 @@ class EventDataClientTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual([item.id for item in result], [EVENT_ID])
 
-    async def test_titled_graphiti_episode_uses_domain_identity_in_anchor_history(self) -> None:
+    async def test_titled_graphiti_episode_uses_durable_native_source_in_anchor_history(self) -> None:
         request = EventCandidateRequest.model_validate(candidate_payload())
         content = json.dumps(
             {"id": EVENT_ID, **request.event.model_dump(mode="json"), "status": "ACTIVE"}
@@ -159,7 +159,7 @@ class EventDataClientTest(unittest.IsolatedAsyncioTestCase):
 
             async def execute_query(self, query, **kwargs):
                 self.query = query
-                return [{"event_id": EVENT_ID, "content": content}], None, None
+                return [{"content": content}], None, None
 
         class Data:
             async def list_candidates(self, candidate):
@@ -170,7 +170,7 @@ class EventDataClientTest(unittest.IsolatedAsyncioTestCase):
         result = await CompositeEventHistory(graphiti, Data()).retrieve(request.event)
 
         self.assertEqual([item.id for item in result], [EVENT_ID])
-        self.assertIn("episode.domain_object_id AS event_id", driver.query)
+        self.assertIn("episode.source_description = $source_description", driver.query)
 
     async def test_graphiti_history_rejects_non_formal_event_identity(self) -> None:
         request = EventCandidateRequest.model_validate(candidate_payload())

@@ -53,7 +53,7 @@ class IngestionRuntimeConfigTest(unittest.TestCase):
 
         with patch("projection.runtime.Graphiti") as graphiti_type, patch(
             "ingestion.runtime.create_app"
-        ) as app_factory:
+        ) as app_factory, patch("ingestion.runtime.EventAnalysisStore"):
             graphiti_type.return_value = SimpleNamespace(
                 driver=object(), clients=SimpleNamespace(llm_client=object())
             )

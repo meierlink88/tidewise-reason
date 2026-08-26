@@ -9,6 +9,16 @@ from pathlib import Path
 from fastapi import FastAPI
 from pydantic import AnyHttpUrl, Field, SecretStr, field_validator
 
+from analysis.event.adapters import GraphitiEventAnalysisLLM
+from analysis.event.graphiti import (
+    GraphitiCandidateRetriever,
+    GraphitiSignalFactProjector,
+)
+from analysis.event.module import EventAnalysisModule
+from analysis.event.pipeline import EventAnalysisPipeline
+from analysis.event.review import ControlledSignalReviewer
+from analysis.event.store import EventAnalysisStore
+from analysis.event.trigger import AnalysisSchedulingEventProjector
 from ingestion.app import create_app
 from ingestion.episcode.event.adapters import (
     CompositeEventHistory,
@@ -46,11 +56,11 @@ def load_ingestion_config(
     """Read only declared keys so unrelated process environment cannot enter the contract."""
 
     values = environment or os.environ
-    payload = {
-        field.alias: values[field.alias]
-        for field in IngestionRuntimeConfig.model_fields.values()
-        if field.alias in values
-    }
+    payload: dict[str, str] = {}
+    for field in IngestionRuntimeConfig.model_fields.values():
+        alias = field.alias
+        if alias is not None and alias in values:
+            payload[alias] = values[alias]
     return IngestionRuntimeConfig.model_validate(payload)
 
 
@@ -60,7 +70,20 @@ def create_runtime_app(config: IngestionRuntimeConfig) -> FastAPI:
         str(config.tidewise_data_base_url),
         config.tidewise_data_service_token.get_secret_value(),
     )
-    projector = GraphitiEventProjector(graphiti)
+    analysis_llm = GraphitiEventAnalysisLLM(graphiti)
+    analysis_pipeline = EventAnalysisPipeline(
+        analysis_llm,
+        GraphitiCandidateRetriever(graphiti),
+        analysis_llm,
+        ControlledSignalReviewer(),
+        GraphitiSignalFactProjector(graphiti),
+    )
+    analysis_module = EventAnalysisModule(
+        EventAnalysisStore(config.state_path), analysis_pipeline
+    )
+    projector = AnalysisSchedulingEventProjector(
+        GraphitiEventProjector(graphiti), analysis_module
+    )
     resolver = EventResolver(
         CompositeEventHistory(graphiti, data),
         GraphitiLLMComparator(graphiti),
@@ -71,6 +94,7 @@ def create_runtime_app(config: IngestionRuntimeConfig) -> FastAPI:
         state_path=config.state_path,
         service_token=config.service_token.get_secret_value(),
         event_resolver=resolver,
+        event_analysis_module=analysis_module,
         dependency_readiness=(data.ready, projector.ready),
         shutdown_callbacks=(projector.close,),
         worker_poll_interval_seconds=config.worker_poll_interval_seconds,

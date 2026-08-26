@@ -125,6 +125,21 @@ Graphiti through its native Episode pipeline, which may create contextual Entiti
 Facts without making them authoritative Tidewise master data.
 _Avoid_: Research Event, Scenario Event, Signal, forecast, investment conclusion
 
+**Event Class**:
+The single primary layer where a formal Event's actor, action and object occur: geopolitical,
+macroeconomic policy, Industry Chain or Industry Chain Node. `COMPANY` remains a compatibility
+classification but Company Signal construction and Company-level reasoning are outside the current
+scope. Classification narrows retrieval; it is not an Entity and is not inferred from downstream
+effects.
+_Avoid_: Event tag Entity, affected-layer list, Storyline, permanent Episode identity
+
+**Signal Fact**:
+A Graphiti `EntityEdge` Fact from one existing controlled Variable to one existing Analysis Anchor,
+with `name=SIGNAL_ON`, formal Event Episode provenance, business-valid time and reviewed Tidewise
+attributes for direction, magnitude, impact window, mechanism and confidence. Its endpoints must
+already have stable graph identities; Signal extraction never creates endpoints.
+_Avoid_: Signal Entity node, Event mention, static Variable-to-Anchor applicability edge, investment conclusion
+
 **Event Candidate Submission**:
 Agent OS 已从 Evidence 提炼的一次现实动作候选及其 Evidence IDs，由 Reasoning
 持久化为可重放工作流输入。它不是 Event 领域对象，不进入 Graphiti；只有判定为新事件并由

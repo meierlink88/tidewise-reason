@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncIterator
 
 from fastapi import FastAPI, HTTPException, status
 
-from ingestion.http import RequestBodyLimitMiddleware
+from analysis.event.module import EventAnalysisModule
+from analysis.event.worker import run_worker as run_event_analysis_worker
 from ingestion.episcode.event.api import create_router as create_event_router
 from ingestion.episcode.event.module import EventCandidateModule
 from ingestion.episcode.event.store import EventCandidateStore
 from ingestion.episcode.event.worker import run_worker as run_event_worker
+from ingestion.http import RequestBodyLimitMiddleware
+
 REQUEST_BODY_LIMIT = 2 * 1024 * 1024
 
 
@@ -26,6 +28,7 @@ def create_app(
     worker_poll_interval_seconds: float = 1.0,
     worker_batch_size: int = 5,
     event_resolver: object | None = None,
+    event_analysis_module: EventAnalysisModule | None = None,
     dependency_readiness: Sequence[Callable[[], Awaitable[bool]]] = (),
     shutdown_callbacks: Sequence[Callable[[], Awaitable[None]]] = (),
 ) -> FastAPI:
@@ -49,12 +52,28 @@ def create_app(
             if start_worker and event_resolver is not None
             else None
         )
+        event_analysis_worker_task = (
+            asyncio.create_task(
+                run_event_analysis_worker(
+                    event_analysis_module,
+                    stop_event=stop_event,
+                    poll_interval_seconds=worker_poll_interval_seconds,
+                    batch_size=worker_batch_size,
+                ),
+                name="event-analysis-worker",
+            )
+            if start_worker and event_analysis_module is not None
+            else None
+        )
         try:
             yield
         finally:
             if event_worker_task is not None:
                 stop_event.set()
                 await event_worker_task
+            if event_analysis_worker_task is not None:
+                stop_event.set()
+                await event_analysis_worker_task
             for callback in shutdown_callbacks:
                 await callback()
 
@@ -85,4 +104,5 @@ def create_app(
         return {"status": "ready"}
 
     app.state.event_candidate_module = event_module
+    app.state.event_analysis_module = event_analysis_module
     return app

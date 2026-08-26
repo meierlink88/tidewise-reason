@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import unittest
 import tempfile
+import unittest
 from pathlib import Path
 
 from ingestion.episcode.event.contracts import (
@@ -10,8 +10,12 @@ from ingestion.episcode.event.contracts import (
     HistoricalEvent,
     PairComparison,
 )
-from ingestion.episcode.event.resolver import EventHistoryUnavailable, EventResolver
 from ingestion.episcode.event.module import EventCandidateModule
+from ingestion.episcode.event.resolver import (
+    AnalysisSchedulingUnavailable,
+    EventHistoryUnavailable,
+    EventResolver,
+)
 from ingestion.episcode.event.store import EventCandidateStore
 from tests.test_event_candidate_api import EVENT_ID, candidate_payload
 
@@ -290,6 +294,35 @@ class EventResolutionTest(unittest.IsolatedAsyncioTestCase):
             completed = module.get_status(accepted.submission_id)
             self.assertIsNotNone(completed)
             assert completed is not None
+            self.assertEqual(completed.status, "SUCCEEDED")
+            self.assertEqual((publisher.calls, projector.calls), (1, 2))
+
+    async def test_analysis_scheduling_retry_preserves_projection_success(self) -> None:
+        request = EventCandidateRequest.model_validate(candidate_payload())
+
+        class FlakyScheduler(Projector):
+            async def project(self, event):
+                self.calls += 1
+                if self.calls == 1:
+                    raise AnalysisSchedulingUnavailable("state store unavailable")
+
+        publisher, projector = DataPublisher(), FlakyScheduler()
+        with tempfile.TemporaryDirectory() as directory:
+            module = EventCandidateModule(
+                EventCandidateStore(Path(directory) / "state.sqlite3"),
+                EventResolver(History([]), Comparator(), publisher, projector),
+                retry_delay_seconds=0,
+            )
+            accepted = module.accept(request)
+
+            await module.process_pending(limit=1)
+            pending = module.get_status(accepted.submission_id)
+            self.assertEqual(pending.status, "PROJECTING")
+            self.assertEqual(pending.graph_projection_status, "SUCCEEDED")
+            self.assertEqual(pending.last_error, "EVENT_ANALYSIS_SCHEDULING_FAILED")
+
+            await module.process_pending(limit=1)
+            completed = module.get_status(accepted.submission_id)
             self.assertEqual(completed.status, "SUCCEEDED")
             self.assertEqual((publisher.calls, projector.calls), (1, 2))
 

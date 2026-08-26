@@ -13,6 +13,7 @@ RUN python -m pip install --no-cache-dir --require-hashes -r /tmp/requirements.l
     && chown reason:reason /var/lib/tidewise-reason
 
 COPY --chown=reason:reason ingestion ./ingestion
+COPY --chown=reason:reason analysis ./analysis
 COPY --chown=reason:reason ontology ./ontology
 COPY --chown=reason:reason projection ./projection
 

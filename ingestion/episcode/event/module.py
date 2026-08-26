@@ -4,17 +4,22 @@ from __future__ import annotations
 
 import logging
 import traceback
+from functools import partial
 from uuid import uuid4
 
-from ingestion.episcode.event.contracts import EventCandidateAcceptance, EventCandidateRequest, EventCandidateStatus
-from ingestion.episcode.event.store import EventCandidateStore
+from ingestion.episcode.event.contracts import (
+    EventCandidateAcceptance,
+    EventCandidateRequest,
+    EventCandidateStatus,
+)
 from ingestion.episcode.event.resolver import (
+    AnalysisSchedulingPending,
     ComparisonUnavailable,
     EventHistoryUnavailable,
     ProjectionPending,
     PublicationRejected,
 )
-
+from ingestion.episcode.event.store import EventCandidateStore
 
 logger = logging.getLogger(__name__)
 
@@ -77,13 +82,25 @@ class EventCandidateModule:
             try:
                 outcome = await self._resolver.resolve(
                     submission,
-                    on_published=lambda result, event: self._store.published(
-                        submission.submission_id, result, event
+                    on_published=partial(
+                        self._store.published, submission.submission_id
                     ),
-                    on_publication_started=lambda decision: self._store.publication_started(
-                        submission.submission_id, decision
+                    on_publication_started=partial(
+                        self._store.publication_started, submission.submission_id
                     ),
                 )
+            except AnalysisSchedulingPending as exc:
+                _log_resolution_failure(
+                    submission, exc, stage="EVENT_ANALYSIS_SCHEDULING"
+                )
+                self._store.analysis_scheduling_pending(
+                    submission.submission_id,
+                    exc.outcome,
+                    exc.event,
+                    terminal=submission.attempt_count >= self._max_attempts,
+                    retry_delay_seconds=self._retry_delay_seconds,
+                )
+                continue
             except ProjectionPending as exc:
                 _log_resolution_failure(
                     submission, exc, stage="GRAPHITI_EVENT_PROJECTION"

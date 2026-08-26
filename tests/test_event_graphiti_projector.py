@@ -3,15 +3,17 @@ from __future__ import annotations
 import json
 import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from uuid import NAMESPACE_URL, uuid5
 
-from graphiti_core.nodes import EpisodeType
+from graphiti_core.nodes import EpisodeType, EpisodicNode
 
 from ingestion.episcode.event.contracts import EventCandidateRequest, HistoricalEvent
 from ingestion.episcode.event.graphiti.projector import (
     EVENT_ENTITY_TYPE_NAMES,
+    EVENT_SOURCE_DESCRIPTION,
     EXTRACTION_INSTRUCTIONS,
+    PENDING_EVENT_SOURCE_DESCRIPTION,
     GraphitiEventProjector,
     event_entity_types,
 )
@@ -37,6 +39,7 @@ class Driver:
                     "complete": True,
                     "episode_kind": "EVENT",
                     "domain_object_id": kwargs["event_id"],
+                    "source_description": EVENT_SOURCE_DESCRIPTION,
                     "name": kwargs["title"],
                 }
             ]
@@ -52,6 +55,12 @@ def event() -> HistoricalEvent:
 
 
 class EventGraphitiProjectorTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self) -> None:
+        self.episode_save = patch.object(
+            EpisodicNode, "save", new=AsyncMock()
+        ).start()
+        self.addCleanup(patch.stopall)
+
     async def test_delegates_formal_event_to_native_add_episode(self) -> None:
         driver = Driver()
         graphiti = SimpleNamespace(driver=driver, add_episode=AsyncMock())
@@ -80,12 +89,12 @@ class EventGraphitiProjectorTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("excluded_entity_types", call)
         self.assertNotIn("edge_types", call)
         self.assertNotIn("EVD", call["episode_body"])
-        self.assertEqual(driver.identity_reads[0]["event_id"], EVENT_ID)
         self.assertEqual(
             driver.identity_reads[0]["episode_uuid"],
             str(uuid5(NAMESPACE_URL, f"urn:tidewise:event-episode:{EVENT_ID}")),
         )
         self.assertNotIn("title", driver.identity_reads[0])
+        self.episode_save.assert_awaited_once()
 
     async def test_marks_native_episode_as_formal_event(self) -> None:
         driver = Driver()
@@ -101,6 +110,9 @@ class EventGraphitiProjectorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(driver.metadata_writes), 1)
         self.assertEqual(driver.metadata_writes[0]["event_id"], EVENT_ID)
         self.assertEqual(driver.metadata_writes[0]["title"], event().event.title)
+        self.assertEqual(
+            driver.metadata_writes[0]["source_description"], EVENT_SOURCE_DESCRIPTION
+        )
 
     async def test_replay_with_same_content_is_idempotent(self) -> None:
         driver = Driver()
@@ -112,6 +124,9 @@ class EventGraphitiProjectorTest(unittest.IsolatedAsyncioTestCase):
 
         graphiti.add_episode.side_effect = add_episode
         await projector.project(event())
+        driver.existing[0].pop("complete", None)
+        driver.existing[0].pop("episode_kind", None)
+        driver.existing[0].pop("domain_object_id", None)
         await projector.project(event())
 
         self.assertEqual(graphiti.add_episode.await_count, 1)
@@ -129,6 +144,7 @@ class EventGraphitiProjectorTest(unittest.IsolatedAsyncioTestCase):
                     "complete": True,
                     "episode_kind": "EVENT",
                     "domain_object_id": EVENT_ID,
+                    "source_description": EVENT_SOURCE_DESCRIPTION,
                 }
             ]
         )
@@ -138,6 +154,40 @@ class EventGraphitiProjectorTest(unittest.IsolatedAsyncioTestCase):
             await GraphitiEventProjector(graphiti).project(event())
 
         graphiti.add_episode.assert_not_awaited()
+
+    async def test_pending_native_shell_is_resumed(self) -> None:
+        historical = event()
+        content = json.dumps(
+            {
+                "id": historical.id,
+                **historical.event.model_dump(mode="json"),
+                "status": "ACTIVE",
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        driver = Driver(
+            existing=[
+                {
+                    "uuid": str(
+                        uuid5(NAMESPACE_URL, f"urn:tidewise:event-episode:{EVENT_ID}")
+                    ),
+                    "name": historical.event.title,
+                    "content": content,
+                    "source_description": PENDING_EVENT_SOURCE_DESCRIPTION,
+                }
+            ]
+        )
+        graphiti = SimpleNamespace(driver=driver, add_episode=AsyncMock())
+        graphiti.add_episode.return_value = SimpleNamespace(
+            episode=SimpleNamespace(uuid=driver.existing[0]["uuid"])
+        )
+
+        await GraphitiEventProjector(graphiti).project(historical)
+
+        graphiti.add_episode.assert_awaited_once()
+        self.episode_save.assert_not_awaited()
 
     async def test_legacy_id_name_is_renamed_without_reextracting_episode(self) -> None:
         historical = event()
@@ -162,6 +212,7 @@ class EventGraphitiProjectorTest(unittest.IsolatedAsyncioTestCase):
                     "complete": True,
                     "episode_kind": "EVENT",
                     "domain_object_id": EVENT_ID,
+                    "source_description": EVENT_SOURCE_DESCRIPTION,
                 }
             ]
         )
@@ -193,6 +244,7 @@ class EventGraphitiProjectorTest(unittest.IsolatedAsyncioTestCase):
                     "complete": True,
                     "episode_kind": "EVENT",
                     "domain_object_id": EVENT_ID,
+                    "source_description": EVENT_SOURCE_DESCRIPTION,
                 }
             ]
         )

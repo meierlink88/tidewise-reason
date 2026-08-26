@@ -132,6 +132,26 @@ def load_config(path: Path | None = None) -> RuntimeConfig:
         raise ProjectionError(f"invalid runtime fields: {', '.join(fields)}") from None
 
 
+def load_graphiti_config(path: Path | None = None) -> GraphitiProviderConfig:
+    """Load only Graphiti provider values from the shared private runtime file."""
+
+    values = _parse_env(path or DEFAULT_ENV_FILE)
+    declared = {field.alias for field in GraphitiProviderConfig.model_fields.values()}
+    known = {
+        field.alias for field in RuntimeConfig.model_fields.values()
+    }.union(REASON_SERVICE_ENV_KEYS)
+    unknown = set(values).difference(known)
+    if unknown:
+        raise ProjectionError(f"invalid runtime fields: {', '.join(sorted(unknown))}")
+    try:
+        return GraphitiProviderConfig.model_validate(
+            {key: value for key, value in values.items() if key in declared}
+        )
+    except ValidationError as exc:
+        fields = sorted({str(item["loc"][0]) for item in exc.errors()})
+        raise ProjectionError(f"invalid runtime fields: {', '.join(fields)}") from None
+
+
 def _unwrap_schema_properties(result: dict, response_model) -> dict:
     if response_model is None:
         return result

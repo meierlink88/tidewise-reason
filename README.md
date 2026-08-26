@@ -117,6 +117,16 @@ bash scripts/initialize-chainnode-graph.sh run --replace
 bash scripts/initialize-chainnode-graph.sh verify
 ```
 
+The geopolitical demo catalog is a graph-only evaluation fixture. It writes reviewed
+`GeopoliticRivalry` nodes with deterministic UUIDs, embeddings and no relationships. It never reads
+or writes Tidewise Data, never sets `data_object_id`, and never deletes graph data:
+
+```bash
+bash scripts/initialize-geopolitic-demo.sh plan
+bash scripts/initialize-geopolitic-demo.sh run
+bash scripts/initialize-geopolitic-demo.sh verify
+```
+
 ## Event Candidate Ingestion
 
 Agent OS sends Event Candidates plus their authoritative Evidence IDs to the standalone Reason API:

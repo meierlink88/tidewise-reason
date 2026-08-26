@@ -196,6 +196,16 @@ class OntologyContractTest(unittest.TestCase):
                 maintenance_owner="Reasoning",
                 catalog_version="variable-catalog/v1",
             )
+        normalized = Variable(
+            variable_id="selling_price",
+            aliases=[" ASP "],
+            definition="Selling price.",
+            measurement_basis="Qualitative trend.",
+            allowed_anchor_types=["ChainNode"],
+            maintenance_owner="Reasoning",
+            catalog_version="variable-catalog/v1",
+        )
+        self.assertEqual(normalized.aliases, ["ASP"])
         with self.assertRaises(ValidationError):
             Variable(
                 variable_id="selling_price",
@@ -241,6 +251,39 @@ class OntologyContractTest(unittest.TestCase):
             validate_variable_catalog([source, source])
         with self.assertRaisesRegex(ValueError, "unknown Variable reference"):
             validate_variable_catalog([derived])
+        with self.assertRaisesRegex(ValueError, "ambiguous Variable alias"):
+            validate_variable_catalog(
+                [
+                    source.model_copy(update={"aliases": ["供应"]}),
+                    derived.model_copy(update={"aliases": [" 供应 "]}),
+                ]
+            )
+        with self.assertRaises(ValidationError):
+            Variable(
+                variable_id="selling_price",
+                aliases=["价格", " 价格 "],
+                definition="Selling price.",
+                measurement_basis="Qualitative trend.",
+                allowed_anchor_types=["ChainNode"],
+                maintenance_owner="Reasoning",
+                catalog_version="variable-catalog/v1",
+            )
+        with self.assertRaisesRegex(ValueError, "exactly one catalog_version"):
+            validate_variable_catalog(
+                [
+                    source,
+                    derived.model_copy(update={"catalog_version": "variable-catalog/v2"}),
+                ]
+            )
+        with self.assertRaisesRegex(ValueError, "cyclic Variable derivation"):
+            validate_variable_catalog(
+                [
+                    source.model_copy(
+                        update={"derived_from_variable_ids": ["selling_price"]}
+                    ),
+                    derived,
+                ]
+            )
         with self.assertRaises(ValidationError):
             Variable(
                 variable_id="selling_price",

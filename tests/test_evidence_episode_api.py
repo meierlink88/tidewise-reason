@@ -26,6 +26,14 @@ class APITestWriter:
         return True
 
 
+class DependencyReadiness:
+    def __init__(self, ready: bool):
+        self._ready = ready
+
+    async def __call__(self) -> bool:
+        return self._ready
+
+
 class EvidenceEpisodeAPITest(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary_directory = tempfile.TemporaryDirectory()
@@ -161,6 +169,22 @@ class EvidenceEpisodeAPITest(unittest.TestCase):
                 self.assertEqual(status["status"], "SUCCEEDED")
 
         self.assertTrue(writer.closed)
+
+    def test_readiness_fails_when_authoritative_event_history_is_unavailable(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            app = create_app(
+                state_path=Path(directory) / "state.sqlite3",
+                service_token="test-reason-token",
+                start_worker=False,
+                dependency_readiness=[DependencyReadiness(False)],
+            )
+            with TestClient(app) as client:
+                health = client.get("/healthz")
+                readiness = client.get("/readyz")
+
+        self.assertEqual(health.status_code, 200)
+        self.assertEqual(readiness.status_code, 503)
+        self.assertEqual(readiness.json(), {"detail": "not ready"})
 
     def test_conflicting_evidence_identity_rolls_back_the_entire_request(self) -> None:
         original = evidence().model_dump(mode="json")

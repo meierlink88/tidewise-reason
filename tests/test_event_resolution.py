@@ -10,7 +10,7 @@ from ingestion.episcode.event.contracts import (
     HistoricalEvent,
     PairComparison,
 )
-from ingestion.episcode.event.resolver import EventResolver
+from ingestion.episcode.event.resolver import EventHistoryUnavailable, EventResolver
 from ingestion.episcode.event.module import EventCandidateModule
 from ingestion.episcode.event.store import EventCandidateStore
 from tests.test_event_candidate_api import EVENT_ID, candidate_payload
@@ -377,6 +377,50 @@ class EventResolutionTest(unittest.IsolatedAsyncioTestCase):
         assert reviewed is not None
         self.assertEqual(reviewed.status, "NEEDS_REVIEW")
         self.assertEqual(reviewed.decision, "NEEDS_REVIEW")
+
+    async def test_data_history_failure_has_safe_typed_status_and_diagnostic_log(self) -> None:
+        request = EventCandidateRequest.model_validate(candidate_payload())
+
+        class UnavailableHistory:
+            async def retrieve(self, candidate):
+                try:
+                    raise ConnectionError("Bearer super-secret-data-token")
+                except ConnectionError as cause:
+                    raise EventHistoryUnavailable(
+                        "response body with private business data"
+                    ) from cause
+
+        with tempfile.TemporaryDirectory() as directory:
+            module = EventCandidateModule(
+                EventCandidateStore(Path(directory) / "state.sqlite3"),
+                EventResolver(
+                    UnavailableHistory(),
+                    Comparator(),
+                    DataPublisher(),
+                    Projector(),
+                ),
+                max_attempts=1,
+                retry_delay_seconds=0,
+            )
+            accepted = module.accept(request)
+            with self.assertLogs(
+                "ingestion.episcode.event.module", level="ERROR"
+            ) as captured:
+                await module.process_pending(limit=1)
+            failed = module.get_status(accepted.submission_id)
+
+        self.assertIsNotNone(failed)
+        assert failed is not None
+        self.assertEqual(failed.status, "FAILED")
+        self.assertEqual(failed.last_error, "DATA_EVENT_HISTORY_UNAVAILABLE")
+        log_output = "\n".join(captured.output)
+        self.assertIn(f"submission_id={accepted.submission_id}", log_output)
+        self.assertIn("stage=DATA_EVENT_HISTORY_RECALL", log_output)
+        self.assertIn("diagnostic_id=", log_output)
+        self.assertIn("EventHistoryUnavailable", log_output)
+        self.assertIn("ConnectionError", log_output)
+        self.assertNotIn("super-secret-data-token", log_output)
+        self.assertNotIn("private business data", log_output)
 
 
 if __name__ == "__main__":

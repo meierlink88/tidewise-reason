@@ -72,6 +72,7 @@ def create_runtime_app(config: IngestionRuntimeConfig) -> FastAPI:
         service_token=config.service_token.get_secret_value(),
         writer=AuthoritativeEpisodeWriter(graphiti),
         event_resolver=resolver,
+        dependency_readiness=(data.ready,),
         worker_poll_interval_seconds=config.worker_poll_interval_seconds,
         worker_batch_size=config.worker_batch_size,
     )

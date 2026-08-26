@@ -8,7 +8,10 @@ import httpx
 
 from ingestion.episcode.event.adapters import CompositeEventHistory, DataEventClient
 from ingestion.episcode.event.contracts import EventCandidateRequest
-from ingestion.episcode.event.resolver import PublicationRejected
+from ingestion.episcode.event.resolver import (
+    EventHistoryUnavailable,
+    PublicationRejected,
+)
 from tests.test_event_candidate_api import EVENT_ID, candidate_payload
 
 
@@ -134,8 +137,40 @@ class EventDataClientTest(unittest.IsolatedAsyncioTestCase):
                 raise RuntimeError("Data unavailable")
 
         graphiti = SimpleNamespace(driver=Driver())
-        with self.assertRaisesRegex(RuntimeError, "authoritative Data"):
+        with self.assertRaises(EventHistoryUnavailable):
             await CompositeEventHistory(graphiti, Data()).retrieve(request.event)
+
+    async def test_readiness_checks_the_authoritative_event_contract(self) -> None:
+        observed = {}
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            observed["authorization"] = request.headers.get("authorization")
+            observed["params"] = dict(request.url.params)
+            return httpx.Response(
+                200,
+                json={
+                    "request_id": "request-ready",
+                    "result": {
+                        "items": [],
+                        "total": 0,
+                        "page": 1,
+                        "page_size": 1,
+                    },
+                },
+            )
+
+        client = DataEventClient(
+            "http://data.example",
+            "data-token",
+            transport=httpx.MockTransport(handler),
+        )
+
+        self.assertTrue(await client.ready())
+        self.assertEqual(observed["authorization"], "Bearer data-token")
+        self.assertEqual(
+            observed["params"],
+            {"page": "1", "page_size": "1", "status": "ACTIVE"},
+        )
 
 
 if __name__ == "__main__":

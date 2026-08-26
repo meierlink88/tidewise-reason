@@ -41,6 +41,10 @@ class ComparisonUnavailable(RuntimeError):
     """The bounded semantic decision could not produce a safe structured result."""
 
 
+class EventHistoryUnavailable(RuntimeError):
+    """The authoritative Data Event history could not be recalled safely."""
+
+
 class PublicationRejected(RuntimeError):
     """Data rejected a publication with a permanent 4xx contract response."""
 

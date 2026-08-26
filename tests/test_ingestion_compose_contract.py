@@ -20,6 +20,10 @@ class IngestionComposeContractTest(unittest.TestCase):
         self.assertIn("bolt://neo4j:7687", compose)
         self.assertIn("REASON_API_SERVICE_TOKEN", compose)
         self.assertIn("/readyz", compose)
+        self.assertIn("TIDEWISE_DATA_BASE_URL: 'http://data-service:9011'", compose)
+        self.assertNotIn(
+            "TIDEWISE_DATA_BASE_URL: '${TIDEWISE_DATA_BASE_URL", compose
+        )
         self.assertIn("python:3.12.11-slim@sha256:", dockerfile)
         self.assertIn("--require-hashes", dockerfile)
         self.assertIn("ingestion.main:app", dockerfile)

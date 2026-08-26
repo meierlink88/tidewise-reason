@@ -7,6 +7,7 @@ from uuid import NAMESPACE_URL, uuid5
 
 from graphiti_core import Graphiti
 from graphiti_core.nodes import EpisodeType
+from pydantic import BaseModel
 
 from ingestion.episcode.event.contracts import HistoricalEvent
 from ontology import ENTITY_TYPES
@@ -14,6 +15,21 @@ from projection.runtime import GRAPHITI_GROUP_ID
 
 
 EVENT_EPISODE_KIND = "EVENT"
+EVENT_ENTITY_TYPE_NAMES = (
+    "Country",
+    "Region",
+    "Organization",
+    "Industry",
+    "Concept",
+    "IndustryChain",
+    "ChainNode",
+)
+
+
+def event_entity_types() -> dict[str, type[BaseModel]]:
+    """Return a fresh, explicitly approved extraction registry for one Event Episode."""
+
+    return {name: ENTITY_TYPES[name] for name in EVENT_ENTITY_TYPE_NAMES}
 
 EXTRACTION_INSTRUCTIONS = """
 The JSON is one canonical investment Event published by Tidewise Data. Extract entities and factual
@@ -99,7 +115,7 @@ class GraphitiEventProjector:
             group_id=GRAPHITI_GROUP_ID,
             uuid=episode_uuid,
             update_communities=False,
-            entity_types=ENTITY_TYPES,
+            entity_types=event_entity_types(),
             custom_extraction_instructions=EXTRACTION_INSTRUCTIONS,
         )
         if result.episode.uuid != episode_uuid:

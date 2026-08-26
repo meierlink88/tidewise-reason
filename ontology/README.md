@@ -6,10 +6,10 @@ the stable fields needed for entity resolution.
 
 ## Version
 
-The current catalog is `reasoning-ontology/v1` and contains:
+The current catalog is `reasoning-ontology/v2` and contains:
 
 - Entity types: `Country`, `Region`, `Organization`, `Industry`, `Concept`, `IndustryChain`,
-  `ChainNode`.
+  `ChainNode`, `Variable`, `GeopoliticRivalry`, `MacroEconomic`.
 - Entity-link types: `CountryInRegion`, `CountryMemberOfOrganization`, `OrganizationInRegion`,
   `IndustryHasParent`, `IndustryChainMappedToIndustry`, `IndustryChainMappedToConcept`,
   `ChainNodeBelongsToIndustryChain`,
@@ -27,6 +27,15 @@ not expose `IndustryChainPrimaryCountry` or an inverse ChainNode containment rel
 The three directed ChainNode topology links store only their canonical Data edge ID and owning
 IndustryChain ID. Review, evidence and provenance fields remain in Tidewise Data and are not
 duplicated into Graphiti.
+
+`Variable` is one globally reusable controlled dimension from the Reason-owned versioned catalog.
+`allowed_anchor_types` limits where a Variable is meaningful; it never creates Anchor-specific
+Variable identities or static Variable-to-Anchor facts. Direction, impact period and the concrete
+Anchor belong to a later Signal Fact.
+
+`GeopoliticRivalry` and `MacroEconomic` mirror their authoritative Tidewise Data blueprint fields
+and closed enums. They intentionally publish no object relationships. Geopolitic actor and region
+texts remain reviewed text and do not establish Country, Region or Organization facts.
 
 Each `ontology/entities/<entity>.py` file owns one Entity model and all relationships for which that
 Entity is the source. The file exports its local `ENTITY_TYPES`, `EDGE_TYPES` and `EDGE_TYPE_MAP`;

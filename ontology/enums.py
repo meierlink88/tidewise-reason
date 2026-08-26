@@ -61,3 +61,42 @@ class ContextualStage(StrEnum):
 class SegmentKind(StrEnum):
     DIRECT_CANDIDATE = "direct_candidate"
     COMPRESSED_CANDIDATE = "compressed_candidate"
+
+
+class AnalysisAnchorType(StrEnum):
+    COUNTRY = "Country"
+    REGION = "Region"
+    GEOPOLITIC_RIVALRY = "GeopoliticRivalry"
+    MACRO_ECONOMIC = "MacroEconomic"
+    INDUSTRY_CHAIN = "IndustryChain"
+    CHAIN_NODE = "ChainNode"
+    CONCEPT = "Concept"
+    COMPANY = "Company"
+    COMMODITY_INDEX = "CommodityIndex"
+    MARKET_INDEX = "MarketIndex"
+    SECURITY = "Security"
+
+
+class GeopoliticRivalryType(StrEnum):
+    GEOPOLITICAL = "GEOPOLITICAL"
+    MILITARY_WAR = "MILITARY_WAR"
+
+
+class GeopoliticRivalryStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    DORMANT = "DORMANT"
+    RESOLVED = "RESOLVED"
+
+
+class MacroEconomicType(StrEnum):
+    MONETARY = "MONETARY"
+    FISCAL = "FISCAL"
+    TRADE_POLICY = "TRADE_POLICY"
+    REGULATORY = "REGULATORY"
+    DATA_ECONOMIC = "DATA_ECONOMIC"
+
+
+class MacroEconomicStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    DORMANT = "DORMANT"
+    ARCHIVED = "ARCHIVED"

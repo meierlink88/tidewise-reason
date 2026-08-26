@@ -41,7 +41,7 @@ unscoped `docker compose down`, `--remove-orphans`, or volume-removal commands i
 ## Graphiti Ontology
 
 The formal Graphiti extraction types live in [`ontology/`](ontology/). The
-`reasoning-ontology/v1` catalog mirrors selected Tidewise Data entity and stable-link contracts and
+`reasoning-ontology/v2` catalog mirrors selected Tidewise Data entity and stable-link contracts and
 contains no authoritative facts. Evidence does not enter Graphiti.
 
 ```bash

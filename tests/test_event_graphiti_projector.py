@@ -9,10 +9,11 @@ from graphiti_core.nodes import EpisodeType
 
 from ingestion.episcode.event.contracts import EventCandidateRequest, HistoricalEvent
 from ingestion.episcode.event.graphiti.projector import (
+    EVENT_ENTITY_TYPE_NAMES,
     EXTRACTION_INSTRUCTIONS,
     GraphitiEventProjector,
+    event_entity_types,
 )
-from ontology import ENTITY_TYPES
 from tests.test_event_candidate_api import EVENT_ID, candidate_payload
 
 
@@ -64,7 +65,10 @@ class EventGraphitiProjectorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(call["name"], EVENT_ID)
         self.assertEqual(call["source"], EpisodeType.json)
         self.assertEqual(call["group_id"], "neo4j")
-        self.assertIs(call["entity_types"], ENTITY_TYPES)
+        self.assertEqual(tuple(call["entity_types"]), EVENT_ENTITY_TYPE_NAMES)
+        for curated_type in ("Variable", "GeopoliticRivalry", "MacroEconomic"):
+            self.assertNotIn(curated_type, call["entity_types"])
+        self.assertIsNot(event_entity_types(), event_entity_types())
         self.assertFalse(call["update_communities"])
         self.assertEqual(
             call["custom_extraction_instructions"], EXTRACTION_INSTRUCTIONS

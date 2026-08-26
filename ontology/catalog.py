@@ -8,12 +8,15 @@ from pydantic import BaseModel
 from ontology.entities import chain_node
 from ontology.entities import concept
 from ontology.entities import country
+from ontology.entities import geopolitic_rivalry
 from ontology.entities import industry
 from ontology.entities import industry_chain
+from ontology.entities import macro_economic
 from ontology.entities import organization
 from ontology.entities import region
+from ontology.entities import variable
 
-ONTOLOGY_VERSION = "reasoning-ontology/v1"
+ONTOLOGY_VERSION = "reasoning-ontology/v2"
 
 _ENTITY_SCHEMAS: tuple[ModuleType, ...] = (
     country,
@@ -23,6 +26,9 @@ _ENTITY_SCHEMAS: tuple[ModuleType, ...] = (
     concept,
     industry_chain,
     chain_node,
+    variable,
+    geopolitic_rivalry,
+    macro_economic,
 )
 
 def _collect_unique(attribute: str) -> dict[Any, Any]:

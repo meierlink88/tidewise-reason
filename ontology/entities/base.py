@@ -1,6 +1,11 @@
 """Shared Graphiti validation policy for Tidewise entity and edge types."""
 
-from pydantic import BaseModel, ConfigDict
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, StringConstraints
+
+
+NonBlankText = Annotated[str, StringConstraints(pattern=r"\S")]
 
 
 class TidewiseEntity(BaseModel):

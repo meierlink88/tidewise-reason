@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from projection.runtime import load_config
+from projection.runtime import load_config, load_graphiti_config
 
 
 class ProjectionRuntimeConfigTest(unittest.TestCase):
@@ -39,6 +39,33 @@ class ProjectionRuntimeConfigTest(unittest.TestCase):
 
         self.assertEqual(config.neo4j_uri, "bolt://127.0.0.1:7687")
         self.assertEqual(config.tidewise_data_service_token.get_secret_value(), "data-token")
+
+    def test_graphiti_only_config_does_not_require_data_credentials(self) -> None:
+        values = {
+            "NEO4J_USER": "neo4j",
+            "NEO4J_PASSWORD": "neo4j-password",
+            "NEO4J_HTTP_PORT": "7474",
+            "NEO4J_BOLT_PORT": "7687",
+            "GRAPHITI_LLM_API_KEY": "llm-key",
+            "GRAPHITI_LLM_BASE_URL": "https://llm.example.com",
+            "GRAPHITI_LLM_MODEL": "reason-model",
+            "GRAPHITI_EMBEDDING_API_KEY": "embedding-key",
+            "GRAPHITI_EMBEDDING_BASE_URL": "https://embedding.example.com",
+            "GRAPHITI_EMBEDDING_MODEL": "embedding-model",
+            "GRAPHITI_EMBEDDING_DIM": "1024",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "graphiti.env"
+            path.write_text(
+                "\n".join(f"{key}={value}" for key, value in values.items()) + "\n",
+                encoding="utf-8",
+            )
+            path.chmod(0o600)
+
+            config = load_graphiti_config(path)
+
+        self.assertEqual(config.neo4j_uri, "bolt://127.0.0.1:7687")
+        self.assertFalse(hasattr(config, "tidewise_data_service_token"))
 
 
 if __name__ == "__main__":

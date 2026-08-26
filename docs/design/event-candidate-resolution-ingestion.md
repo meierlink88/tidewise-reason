@@ -337,7 +337,7 @@ payload 返回 409”是实现前的硬性验收条件。该能力会重新引�
 ```text
 episode_kind      = EVENT
 domain_object_id  = EVT...
-name              = EVT...
+name              = Event title
 source            = EpisodeType.json
 source_description= Published canonical Event from Data Service
 content           = Data 返回 Event 的规范 JSON
@@ -346,7 +346,8 @@ group_id           = neo4j
 
 投影规则：
 
-- Episode UUID 从正式 Event ID 确定性派生；同一 Event 重试不得创建第二个 Episode；
+- Episode UUID 从正式 Event ID 确定性派生，`domain_object_id` 保存正式 Event ID；
+  `name` 仅用于人类可读的 Event 标题，不承担身份语义；同一 Event 重试不得创建第二个 Episode；
 - Graphiti 内容只来自 Data 返回的正式 Event，不以 Agent OS Candidate 作为权威快照；
 - 使用 Graphiti 标准 `add_episode()` 完成实体抽取、解析、上下文实体创建、Fact 抽取、去重与
   时态失效；LLM 创建的上下文 Entity 不得获得权威 `data_object_id`；

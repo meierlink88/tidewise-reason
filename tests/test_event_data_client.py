@@ -119,6 +119,88 @@ class EventDataClientTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual([item.id for item in result], [EVENT_ID])
 
+    async def test_titled_graphiti_episode_remains_available_to_fulltext_history(self) -> None:
+        request = EventCandidateRequest.model_validate(candidate_payload())
+        content = json.dumps(
+            {"id": EVENT_ID, **request.event.model_dump(mode="json"), "status": "ACTIVE"}
+        )
+
+        class Search:
+            async def episode_fulltext_search(self, *args, **kwargs):
+                return [SimpleNamespace(name=request.event.title, content=content)]
+
+        class Driver:
+            search_interface = Search()
+
+            async def execute_query(self, *args, **kwargs):
+                return [], None, None
+
+        class Data:
+            async def list_candidates(self, candidate):
+                return []
+
+        graphiti = SimpleNamespace(driver=Driver())
+        result = await CompositeEventHistory(graphiti, Data()).retrieve(request.event)
+
+        self.assertEqual([item.id for item in result], [EVENT_ID])
+
+    async def test_titled_graphiti_episode_uses_domain_identity_in_anchor_history(self) -> None:
+        request = EventCandidateRequest.model_validate(candidate_payload())
+        content = json.dumps(
+            {"id": EVENT_ID, **request.event.model_dump(mode="json"), "status": "ACTIVE"}
+        )
+
+        class Search:
+            async def episode_fulltext_search(self, *args, **kwargs):
+                return []
+
+        class Driver:
+            search_interface = Search()
+
+            async def execute_query(self, query, **kwargs):
+                self.query = query
+                return [{"event_id": EVENT_ID, "content": content}], None, None
+
+        class Data:
+            async def list_candidates(self, candidate):
+                return []
+
+        driver = Driver()
+        graphiti = SimpleNamespace(driver=driver)
+        result = await CompositeEventHistory(graphiti, Data()).retrieve(request.event)
+
+        self.assertEqual([item.id for item in result], [EVENT_ID])
+        self.assertIn("episode.domain_object_id AS event_id", driver.query)
+
+    async def test_graphiti_history_rejects_non_formal_event_identity(self) -> None:
+        request = EventCandidateRequest.model_validate(candidate_payload())
+        content = json.dumps(
+            {
+                "id": "not-an-event-id",
+                **request.event.model_dump(mode="json"),
+                "status": "ACTIVE",
+            }
+        )
+
+        class Search:
+            async def episode_fulltext_search(self, *args, **kwargs):
+                return [SimpleNamespace(name=request.event.title, content=content)]
+
+        class Driver:
+            search_interface = Search()
+
+            async def execute_query(self, *args, **kwargs):
+                return [], None, None
+
+        class Data:
+            async def list_candidates(self, candidate):
+                return []
+
+        graphiti = SimpleNamespace(driver=Driver())
+        result = await CompositeEventHistory(graphiti, Data()).retrieve(request.event)
+
+        self.assertEqual(result, [])
+
     async def test_data_failure_never_degrades_to_stale_graphiti_history(self) -> None:
         request = EventCandidateRequest.model_validate(candidate_payload())
 

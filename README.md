@@ -41,7 +41,7 @@ unscoped `docker compose down`, `--remove-orphans`, or volume-removal commands i
 ## Graphiti Ontology
 
 The formal Graphiti extraction types live in [`ontology/`](ontology/). The
-`reasoning-ontology/v1` catalog mirrors selected Tidewise Data entity and stable-link contracts and
+`reasoning-ontology/v2` catalog mirrors selected Tidewise Data entity and stable-link contracts and
 contains no authoritative facts. Evidence does not enter Graphiti.
 
 ```bash
@@ -115,6 +115,16 @@ edge ID and IndustryChain scope:
 bash scripts/initialize-chainnode-graph.sh plan
 bash scripts/initialize-chainnode-graph.sh run --replace
 bash scripts/initialize-chainnode-graph.sh verify
+```
+
+The geopolitical demo catalog is a graph-only evaluation fixture. It writes reviewed
+`GeopoliticRivalry` nodes with deterministic UUIDs, embeddings and no relationships. It never reads
+or writes Tidewise Data, never sets `data_object_id`, and never deletes graph data:
+
+```bash
+bash scripts/initialize-geopolitic-demo.sh plan
+bash scripts/initialize-geopolitic-demo.sh run
+bash scripts/initialize-geopolitic-demo.sh verify
 ```
 
 ## Event Candidate Ingestion

@@ -65,6 +65,24 @@ _Avoid_: Market Index, Market Sector, Security, Financial Instrument, market sen
 Entity, event, signal and relation instances that conform to the SPG Schema.
 _Avoid_: Schema, type catalog, TBox
 
+**Controlled Variable**:
+A globally reusable, versioned change dimension that a Signal may apply to one permitted Analysis
+Anchor type. Its stable identity, definition, measurement basis, optional unit, applicability and
+maintenance owner belong to the Variable catalog. Direction, impact period, confidence and the
+concrete Anchor belong to a Signal and never create Anchor-specific Variable copies.
+_Avoid_: Signal direction, current value, permanent Anchor attribute, per-Anchor Variable duplicate
+
+**GeopoliticRivalry**:
+A stable Tidewise Data narrative blueprint for one geopolitical rivalry or military war. Reviewed
+actor and influenced-region texts describe its scope but do not establish authoritative Country,
+Region or Organization relationships.
+_Avoid_: Event category, Storyline, inferred Actor relation, GeopoliticalRivalry alias type
+
+**MacroEconomic**:
+A stable Tidewise Data narrative blueprint for one monetary, fiscal, trade-policy, regulatory or
+data-economic subject. It has no implied Country, Region, Institution or Storyline relationship.
+_Avoid_: Event category, one economic data release, MacroEconomics alias type, inferred ownership
+
 **Signal**:
 A time-scoped, Event-linked statement that a controlled Variable changes or holds on one Analysis
 Anchor. A direct Signal interprets one curated Event; a derived Signal records an explicitly

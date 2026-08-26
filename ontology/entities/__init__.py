@@ -13,14 +13,17 @@ from ontology.entities.country import (
     CountryInRegion,
     CountryMemberOfOrganization,
 )
+from ontology.entities.geopolitic_rivalry import GeopoliticRivalry
 from ontology.entities.industry import Industry, IndustryHasParent
 from ontology.entities.industry_chain import (
     IndustryChain,
     IndustryChainMappedToConcept,
     IndustryChainMappedToIndustry,
 )
+from ontology.entities.macro_economic import MacroEconomic
 from ontology.entities.organization import Organization, OrganizationInRegion
 from ontology.entities.region import Region
+from ontology.entities.variable import Variable
 
 __all__ = [
     "ChainNode",
@@ -32,12 +35,15 @@ __all__ = [
     "Country",
     "CountryInRegion",
     "CountryMemberOfOrganization",
+    "GeopoliticRivalry",
     "Industry",
     "IndustryHasParent",
     "IndustryChain",
     "IndustryChainMappedToConcept",
     "IndustryChainMappedToIndustry",
+    "MacroEconomic",
     "Organization",
     "OrganizationInRegion",
     "Region",
+    "Variable",
 ]

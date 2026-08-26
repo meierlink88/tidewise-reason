@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import timedelta
 from typing import Literal
 
@@ -10,7 +11,7 @@ import httpx
 from graphiti_core import Graphiti
 from graphiti_core.prompts.models import Message
 from graphiti_core.search.search_filters import SearchFilters
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from ingestion.episcode.event.contracts import (
     AtomicityAssessment,
@@ -25,11 +26,21 @@ from projection.runtime import GRAPHITI_GROUP_ID
 EVENTS_PATH = "/api/data/v1/events"
 MAX_DATA_HISTORY = 1_000
 MAX_RESOLUTION_CANDIDATES = 30
+EVENT_ID_PATTERN = re.compile(
+    r"^EVT[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+)
 
 
 class DataEventDTO(EventCandidateDTO):
     id: str
     status: Literal["ACTIVE", "DEPRECATED", "ARCHIVED"]
+
+    @field_validator("id")
+    @classmethod
+    def id_is_a_formal_data_identity(cls, value: str) -> str:
+        if EVENT_ID_PATTERN.fullmatch(value) is None:
+            raise ValueError("id must be a formal Data Event identity")
+        return value
 
     def historical(self) -> HistoricalEvent:
         return HistoricalEvent(id=self.id, event=EventCandidateDTO.model_validate(self.model_dump(exclude={"id", "status"})))
@@ -146,17 +157,22 @@ WHERE target.data_object_id IS NOT NULL
   AND (target.name = mention OR target.code = mention OR mention IN coalesce(target.aliases, []))
 WITH collect(DISTINCT target.uuid) AS target_uuids
 MATCH (episode:Episodic {group_id: $group_id, episode_kind: 'EVENT'})-[:MENTIONS]->(target:Entity)
-WHERE target.uuid IN target_uuids
-RETURN DISTINCT episode.name AS name, episode.content AS content
+WHERE target.uuid IN target_uuids AND episode.domain_object_id IS NOT NULL
+RETURN DISTINCT episode.domain_object_id AS event_id, episode.content AS content
 LIMIT $limit
 """.strip()
 
 
-def _historical_from_content(content: str) -> HistoricalEvent | None:
+def _historical_from_content(
+    content: str, *, expected_event_id: str | None = None
+) -> HistoricalEvent | None:
     try:
-        return DataEventDTO.model_validate(json.loads(content)).historical()
+        event = DataEventDTO.model_validate(json.loads(content)).historical()
     except (ValueError, TypeError):
         return None
+    if expected_event_id is not None and event.id != expected_event_id:
+        return None
+    return event
 
 
 def _identity_rank(candidate: EventCandidateDTO, historical: HistoricalEvent) -> tuple:
@@ -190,8 +206,6 @@ class CompositeEventHistory:
                 MAX_RESOLUTION_CANDIDATES,
             )
             for episode in episodes:
-                if not episode.name.startswith("EVT"):
-                    continue
                 if event := _historical_from_content(episode.content):
                     result[event.id] = event
         except Exception:
@@ -210,8 +224,11 @@ class CompositeEventHistory:
                 routing_="r",
             )
             for record in records:
-                if str(record["name"]).startswith("EVT") and (
-                    event := _historical_from_content(str(record["content"]))
+                event_id = record.get("event_id")
+                if event_id is not None and (
+                    event := _historical_from_content(
+                        str(record["content"]), expected_event_id=str(event_id)
+                    )
                 ):
                     result[event.id] = event
         except Exception:

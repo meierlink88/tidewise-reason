@@ -88,25 +88,18 @@ Reasoning Server / Graphiti Event Ingestion
 
 关键原则：
 
-1. Evidence 留存在 Data/PG，目标主流程不要求先把 Evidence 写入 Graphiti；
+1. Evidence 留存在 Data/PG，不写入 Graphiti；
 2. Event 在 PG 原子发布成功前，禁止写入 Graphiti；
 3. PG 中的 Event 集合是历史 Event 查重的保底来源，不能只查 Graphiti；
 4. Graphiti 投影延迟或 Anchor 漏配不能导致系统重复创建 Event；
 5. Graphiti 的候选召回结果只是证据之一，LLM 不能仅凭相似度自动合并 Event。
 
-### 1.1 与现有 Evidence Episode 实现的决策门禁
+### 1.1 Evidence 图谱边界
 
-当前 [ADR-0002](../adr/0002-ingest-published-evidence-as-graphiti-episodes.md) 和现有 API 已实现
-“Published Evidence 作为 Graphiti Episode”。本设计提出的目标主流程与其不同：Evidence 留在
-Data/PG，只有 Published Event 进入推理图谱。
-
-因此，在本设计获批后、开始实现前，必须新增一份 superseding ADR，明确：
-
-- Evidence Episode API 是退役、保留为诊断入口，还是退出 Event Curation 主链路；
-- 已经写入 Graphiti 的 Evidence Episode 如何保留或隔离；
-- 不删除任何已有图数据或卷，除非用户另行明确授权。
-
-本设计阶段不修改现有运行时、不删除数据，也不把 ADR-0002 视为已经失效。
+[ADR-0007](../adr/0007-project-only-events-through-native-graphiti-episodes.md) 已确定 Evidence
+Episode API 和写入链路退役：Evidence 留在 Data/PG，只有 Data 发布后的正式 Event 进入
+Graphiti。历史 Evidence Episode、SQLite 状态和图数据不在本次变更中删除；任何清理仍需
+用户单独授权。
 
 ## 2. 输入、输出与调用合同
 
@@ -638,7 +631,7 @@ Event 必须同时满足：
 
 本设计通过评审后，按以下顺序实施：
 
-1. 新增 superseding ADR，确定 Evidence 不进入 Graphiti 主链路的迁移策略；
+1. 按 ADR-0007 保持 Evidence 不进入 Graphiti；
 2. 核对并冻结 Data Evidence/Event/Link 合同；
 3. 实现只读 EvidenceReader 和三路 HistoricalEventRetriever；
 4. 用真实 Evidence 离线输出候选和召回审计，不发布数据；
@@ -656,4 +649,4 @@ Event 必须同时满足：
 4. Data 是否允许增加 Event matching 派生文本和 pgvector，还是先由独立检索索引承载？
 5. 第一版可用的精确业务标识有哪些，按哪类 Event 配置匹配时间窗口？
 6. 哪些来源等级和 modality 未来允许自动发布，哪些永久需要人工审核？
-7. 已存在 Evidence Episode 数据是否仅保留，还是需要从推理查询中隔离？
+7. 已存在 Evidence Episode 暂时保留并由 `episode_kind=EVENT` 查询隔离；后续是否清理需单独决策？

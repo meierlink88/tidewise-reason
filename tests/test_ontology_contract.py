@@ -63,7 +63,7 @@ class OntologyContractTest(unittest.TestCase):
             EDGE_TYPE_MAP[("IndustryChain", "Concept")],
             ["IndustryChainMappedToConcept"],
         )
-        self.assertEqual(ONTOLOGY_VERSION, "evidence-curation/v3")
+        self.assertEqual(ONTOLOGY_VERSION, "reasoning-ontology/v1")
 
     def test_graphiti_models_are_pydantic_classes_without_protected_fields(self) -> None:
         protected = {
@@ -83,7 +83,7 @@ class OntologyContractTest(unittest.TestCase):
             for field in model.model_fields.values():
                 self.assertTrue(field.description)
 
-    def test_canonical_identity_is_validated_but_not_required_from_evidence(self) -> None:
+    def test_canonical_identity_is_validated_but_not_required_from_extraction(self) -> None:
         self.assertIsNone(Country().data_object_id)
         country = Country(
             data_object_id="COU11111111-1111-4111-8111-111111111111",
@@ -110,7 +110,7 @@ class OntologyContractTest(unittest.TestCase):
     def test_catalog_is_serializable_and_exposes_source_target_pairs(self) -> None:
         catalog = ontology_catalog()
         json.dumps(catalog)
-        self.assertEqual(catalog["version"], "evidence-curation/v3")
+        self.assertEqual(catalog["version"], "reasoning-ontology/v1")
         self.assertEqual(
             catalog["entity_links"]["CountryInRegion"]["source_targets"],
             [{"source": "Country", "target": "Region"}],

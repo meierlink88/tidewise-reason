@@ -28,7 +28,7 @@ services:
       context: ../..
       dockerfile: infra/ingestion/Dockerfile
     image: tidewise-reason-ingestion:graphiti-0.29.3
-    container_name: reason-graphiti-api
+    container_name: reason-service
     restart: unless-stopped
     depends_on:
       neo4j:

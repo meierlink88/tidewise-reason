@@ -2,38 +2,30 @@ from __future__ import annotations
 
 import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
+from uuid import NAMESPACE_URL, uuid5
 
-from graphiti_core.nodes import EntityNode
+from graphiti_core.nodes import EpisodeType
 
-from ingestion.episcode.event.adapters import ControlledEventProjector
 from ingestion.episcode.event.contracts import EventCandidateRequest, HistoricalEvent
+from ingestion.episcode.event.graphiti.projector import (
+    EXTRACTION_INSTRUCTIONS,
+    GraphitiEventProjector,
+)
+from ontology import ENTITY_TYPES
 from tests.test_event_candidate_api import EVENT_ID, candidate_payload
 
 
 class Driver:
     def __init__(self, existing: list[dict] | None = None) -> None:
-        self.writes: list[dict] = []
         self.existing = existing or []
-        self.queries: list[str] = []
+        self.metadata_writes: list[dict] = []
 
     async def execute_query(self, query: str, **kwargs):
-        self.queries.append(query)
-        if "controlled_episode_resolve" in query:
-            return [
-                {
-                    "candidate_uuid": item["candidate_uuid"],
-                    "entity_uuid": "concept-ai",
-                    "entity_name": "人工智能",
-                    "data_object_id": "CON11111111-1111-4111-8111-111111111111",
-                }
-                for item in kwargs["candidates"]
-                if item["entity_type"] == "Concept" and item["name"] == "AI"
-            ], None, None
-        if "MATCH (episode:Episodic" in query:
+        if "MATCH (episode:Episodic {name:" in query:
             return self.existing, None, None
-        if "MERGE (episode:Episodic" in query:
-            self.writes.append(kwargs)
+        if "graphiti_native_event_metadata" in query:
+            self.metadata_writes.append(kwargs)
             self.existing = [
                 {
                     "uuid": kwargs["episode_uuid"],
@@ -43,76 +35,74 @@ class Driver:
                     "domain_object_id": kwargs["name"],
                 }
             ]
-            return [
-                {
-                    "uuid": kwargs["episode_uuid"],
-                    "linked": len(kwargs["mentions"]),
-                }
-            ], None, None
+            return [{"uuid": kwargs["episode_uuid"]}], None, None
+        if query == "RETURN 1 AS ready":
+            return [{"ready": 1}], None, None
         raise AssertionError(f"unexpected query: {query}")
 
 
+def event() -> HistoricalEvent:
+    request = EventCandidateRequest.model_validate(candidate_payload())
+    return HistoricalEvent(id=EVENT_ID, event=request.event)
+
+
 class EventGraphitiProjectorTest(unittest.IsolatedAsyncioTestCase):
-    async def test_projects_only_the_formal_data_event_as_event_episode(self) -> None:
-        request = EventCandidateRequest.model_validate(candidate_payload())
-        historical = HistoricalEvent(id=EVENT_ID, event=request.event)
+    async def test_delegates_formal_event_to_native_add_episode(self) -> None:
         driver = Driver()
-        graphiti = SimpleNamespace(driver=driver, clients=object())
-
-        with patch(
-            "ingestion.episcode.event.adapters.extract_nodes",
-            new=AsyncMock(return_value=([], [])),
-        ):
-            await ControlledEventProjector(graphiti).project(historical)
-
-        self.assertEqual(len(driver.writes), 1)
-        write = driver.writes[0]
-        self.assertEqual(write["name"], EVENT_ID)
-        self.assertEqual(write["target_uuids"], [])
-        self.assertIn('\"status\":\"ACTIVE\"', write["content"])
-        self.assertNotIn("EVD", write["content"])
-        self.assertTrue(all("EntityEdge" not in query for query in driver.queries))
-
-    async def test_links_only_a_preexisting_canonical_entity(self) -> None:
-        request = EventCandidateRequest.model_validate(candidate_payload())
-        historical = HistoricalEvent(id=EVENT_ID, event=request.event)
-        driver = Driver()
-        graphiti = SimpleNamespace(driver=driver, clients=object())
-        extracted = EntityNode(
-            name="AI",
-            group_id="neo4j",
-            labels=["Concept"],
-            summary="",
+        graphiti = SimpleNamespace(driver=driver, add_episode=AsyncMock())
+        graphiti.add_episode.return_value = SimpleNamespace(
+            episode=SimpleNamespace(
+                uuid=str(
+                    uuid5(NAMESPACE_URL, f"urn:tidewise:event-episode:{EVENT_ID}")
+                )
+            )
         )
 
-        with patch(
-            "ingestion.episcode.event.adapters.extract_nodes",
-            new=AsyncMock(return_value=([extracted], [])),
-        ):
-            await ControlledEventProjector(graphiti).project(historical)
+        await GraphitiEventProjector(graphiti).project(event())
 
-        self.assertEqual(driver.writes[0]["target_uuids"], ["concept-ai"])
-        self.assertEqual(driver.writes[0]["mentions"][0]["entity_type"], "Concept")
+        call = graphiti.add_episode.await_args.kwargs
+        self.assertEqual(call["name"], EVENT_ID)
+        self.assertEqual(call["source"], EpisodeType.json)
+        self.assertEqual(call["group_id"], "neo4j")
+        self.assertIs(call["entity_types"], ENTITY_TYPES)
+        self.assertFalse(call["update_communities"])
+        self.assertEqual(
+            call["custom_extraction_instructions"], EXTRACTION_INSTRUCTIONS
+        )
+        self.assertNotIn("excluded_entity_types", call)
+        self.assertNotIn("edge_types", call)
+        self.assertNotIn("EVD", call["episode_body"])
+
+    async def test_marks_native_episode_as_formal_event(self) -> None:
+        driver = Driver()
+        graphiti = SimpleNamespace(driver=driver, add_episode=AsyncMock())
+        projector = GraphitiEventProjector(graphiti)
+
+        async def add_episode(**kwargs):
+            return SimpleNamespace(episode=SimpleNamespace(uuid=kwargs["uuid"]))
+
+        graphiti.add_episode.side_effect = add_episode
+        await projector.project(event())
+
+        self.assertEqual(len(driver.metadata_writes), 1)
+        self.assertEqual(driver.metadata_writes[0]["name"], EVENT_ID)
 
     async def test_replay_with_same_content_is_idempotent(self) -> None:
-        request = EventCandidateRequest.model_validate(candidate_payload())
-        historical = HistoricalEvent(id=EVENT_ID, event=request.event)
         driver = Driver()
-        graphiti = SimpleNamespace(driver=driver, clients=object())
+        graphiti = SimpleNamespace(driver=driver, add_episode=AsyncMock())
+        projector = GraphitiEventProjector(graphiti)
 
-        with patch(
-            "ingestion.episcode.event.adapters.extract_nodes",
-            new=AsyncMock(return_value=([], [])),
-        ):
-            projector = ControlledEventProjector(graphiti)
-            await projector.project(historical)
-            await projector.project(historical)
+        async def add_episode(**kwargs):
+            return SimpleNamespace(episode=SimpleNamespace(uuid=kwargs["uuid"]))
 
-        self.assertEqual(len(driver.writes), 1)
+        graphiti.add_episode.side_effect = add_episode
+        await projector.project(event())
+        await projector.project(event())
+
+        self.assertEqual(graphiti.add_episode.await_count, 1)
+        self.assertEqual(len(driver.metadata_writes), 1)
 
     async def test_existing_same_identity_with_conflicting_content_fails_closed(self) -> None:
-        request = EventCandidateRequest.model_validate(candidate_payload())
-        historical = HistoricalEvent(id=EVENT_ID, event=request.event)
         driver = Driver(
             existing=[
                 {
@@ -124,12 +114,16 @@ class EventGraphitiProjectorTest(unittest.IsolatedAsyncioTestCase):
                 }
             ]
         )
-        graphiti = SimpleNamespace(driver=driver, clients=object())
+        graphiti = SimpleNamespace(driver=driver, add_episode=AsyncMock())
 
         with self.assertRaisesRegex(RuntimeError, "conflicts"):
-            await ControlledEventProjector(graphiti).project(historical)
+            await GraphitiEventProjector(graphiti).project(event())
 
-        self.assertEqual(driver.writes, [])
+        graphiti.add_episode.assert_not_awaited()
+
+    async def test_readiness_checks_graph_provider(self) -> None:
+        graphiti = SimpleNamespace(driver=Driver())
+        self.assertTrue(await GraphitiEventProjector(graphiti).ready())
 
 
 if __name__ == "__main__":

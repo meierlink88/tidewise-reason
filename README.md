@@ -1,8 +1,8 @@
 # Tidewise Reason
 
 Tidewise Reasoning Server and its Graphiti temporal graph provider. The standalone FastAPI service
-owns controlled Evidence/Event ingestion, Event resolution and Graphiti projection. Tidewise Data
-remains the authoritative owner of domain facts.
+owns Event Candidate resolution and formal Event projection. Tidewise Data remains the
+authoritative owner of Evidence, Event and canonical domain facts.
 
 ## Start
 
@@ -40,16 +40,16 @@ unscoped `docker compose down`, `--remove-orphans`, or volume-removal commands i
 
 ## Graphiti Ontology
 
-The formal Graphiti extraction types live in [`ontology/`](ontology/). The first
-`evidence-curation/v3` catalog mirrors the selected Tidewise Data entity and stable-link contracts;
-it contains no authoritative facts and models Evidence as an Episode rather than an Entity.
+The formal Graphiti extraction types live in [`ontology/`](ontology/). The
+`reasoning-ontology/v1` catalog mirrors selected Tidewise Data entity and stable-link contracts and
+contains no authoritative facts. Evidence does not enter Graphiti.
 
 ```bash
 bash scripts/test-ontology.sh
 bash scripts/verify-graphiti-contract.sh
 ```
 
-Authoritative fact imports are explicit projections, not Evidence Episodes. The first projection
+Authoritative fact imports are explicit projections, not Event Episodes. The first projection
 validates the complete Country API response against the local `Country`, `Region` and
 `CountryInRegion` Pydantic ontology before Graphiti receives any write:
 
@@ -117,38 +117,35 @@ bash scripts/initialize-chainnode-graph.sh run --replace
 bash scripts/initialize-chainnode-graph.sh verify
 ```
 
-## Evidence Episode Ingestion
+## Event Candidate Ingestion
 
-Agent OS can push complete, already-published Atomic Evidence to the standalone Reason ingestion
-API. The feature-local implementation is under [`ingestion/episcode/evidence/`](ingestion/episcode/evidence/):
+Agent OS sends Event Candidates plus their authoritative Evidence IDs to the standalone Reason API:
 
 ```text
-POST /api/reason/v1/evidence-episodes
-GET  /api/reason/v1/evidence-episodes/{evidence_id}
+POST /api/reason/v1/event-candidates
+GET  /api/reason/v1/event-candidates/{submission_id}
 ```
 
-The POST body contains only `evidences` and accepts 1–50 complete Evidence records. Acceptance is
-asynchronous and idempotent by formal Evidence ID. Configure `REASON_API_SERVICE_TOKEN` in the
-private mode-`0600` runtime environment, then use only the service-scoped commands:
+Reason resolves Event identity, publishes a genuinely new Event and its Evidence links through
+Data Service, then projects only the returned formal Event into Graphiti. Configure
+`REASON_API_SERVICE_TOKEN` in the private mode-`0600` runtime environment, then use only the
+service-scoped commands:
 
 ```bash
 bash infra/graphiti/start-api.sh
 bash infra/graphiti/verify-api.sh
-bash scripts/verify-evidence-episode.sh
 bash infra/graphiti/stop-api.sh
 ```
 
-The API binds to the fixed address <http://127.0.0.1:8890>. Its delivery state is stored in the
+The API binds to the fixed address <http://127.0.0.1:8890>. Its workflow state is stored in the
 dedicated `tidewise-reason_graphiti-api-state` volume; stopping the service does not delete that
 volume.
-Evidence uses a Reason-owned controlled Episode writer: Graphiti extracts typed mention candidates,
-but only already-projected nodes with an authoritative `data_object_id` can receive `MENTIONS`.
-Unmatched candidates remain in the immutable Episode content and never become graph Entities.
-Evidence Episodic nodes carry `episode_kind=EVIDENCE`; future Event Episodic nodes must use
-`EVENT`, and downstream Analysis Context retrieval must select only Event Episodes.
-The live Evidence check is idempotent: it selects an already-published Data Service Evidence that
-mentions the projected `人工智能` Concept, then verifies both the completed Episodic node and its
-complete `MENTIONS` target set instead of checking only one expected canonical link.
+
+Formal Events use Graphiti's native `add_episode()` pipeline, including entity extraction and
+resolution, contextual Entity creation, explicit Fact extraction, Fact deduplication and temporal
+invalidation. A thin adapter preserves deterministic Event Episode identity and marks the completed
+Episode with `episode_kind=EVENT` and its Data Event ID. Native Graphiti processing does not create
+Tidewise Variables, Signals or Storylines; those remain separate reasoning stages.
 
 ## Deployment boundary
 

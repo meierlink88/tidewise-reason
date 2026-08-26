@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import Literal
-from uuid import NAMESPACE_URL, uuid5
 
 import httpx
 from graphiti_core import Graphiti
-from graphiti_core.nodes import EpisodicNode
 from graphiti_core.prompts.models import Message
 from graphiti_core.search.search_filters import SearchFilters
-from graphiti_core.utils.maintenance.node_operations import extract_nodes
 from pydantic import BaseModel, ConfigDict
 
 from ingestion.episcode.event.contracts import (
@@ -22,13 +19,10 @@ from ingestion.episcode.event.contracts import (
     PairComparison,
 )
 from ingestion.episcode.event.resolver import EventHistoryUnavailable, PublicationRejected
-from ingestion.episcode.evidence.graphiti.resolver import CanonicalEntityResolver, resolve_with_graphiti_vectors
-from ontology import ENTITY_TYPES
 from projection.runtime import GRAPHITI_GROUP_ID
 
 
 EVENTS_PATH = "/api/data/v1/events"
-EVENT_EPISODE_KIND = "EVENT"
 MAX_DATA_HISTORY = 1_000
 MAX_RESOLUTION_CANDIDATES = 30
 
@@ -276,77 +270,3 @@ class GraphitiLLMComparator:
         response = await self._client.generate_response(messages, response_model=PairComparison, group_id=GRAPHITI_GROUP_ID,
                                                           prompt_name="tidewise_event_identity_v1")
         return PairComparison.model_validate(response)
-
-
-EXTRACTION_INSTRUCTIONS = """
-The JSON is one Data-published investment Event. Extract only explicit candidates fitting registered
-ontology descriptions. Only canonical entities already present in the graph may be linked later.
-Region means a reviewed global or cross-country region, not a province or city. Organization means
-an international alliance or multilateral organization, not a company, issuer, media company or
-government department. Never invent entities, links, facts, variables, signals, forecasts, or Storylines.
-""".strip()
-
-FIND_EVENT = """
-MATCH (episode:Episodic {name: $name, group_id: $group_id})
-RETURN episode.uuid AS uuid, episode.content AS content,
-       coalesce(episode.tidewise_ingestion_complete, false) AS complete,
-       episode.episode_kind AS episode_kind, episode.domain_object_id AS domain_object_id
-LIMIT 2
-""".strip()
-
-WRITE_EVENT = """
-OPTIONAL MATCH (target:Entity {group_id: $group_id})
-WHERE target.uuid IN $target_uuids AND target.data_object_id IS NOT NULL
-  AND any(mention IN $mentions WHERE mention.entity_uuid = target.uuid AND mention.entity_type IN labels(target))
-WITH collect(target) AS targets
-WHERE size(targets) = size($target_uuids)
-MERGE (episode:Episodic {uuid: $episode_uuid, group_id: $group_id})
-SET episode.name=$name, episode.source='json', episode.source_description=$source_description,
-    episode.content=$content, episode.valid_at=$valid_at, episode.created_at=$created_at,
-    episode.entity_edges=[], episode.episode_kind='EVENT', episode.domain_object_id=$name
-WITH episode, targets OPTIONAL MATCH (episode)-[old:MENTIONS]->() DELETE old
-WITH DISTINCT episode, targets
-FOREACH (mention IN $mentions | FOREACH (target IN [entity IN targets WHERE entity.uuid=mention.entity_uuid] |
-  MERGE (episode)-[edge:MENTIONS {uuid: mention.edge_uuid}]->(target)
-  SET edge.group_id=$group_id, edge.created_at=$created_at))
-SET episode.tidewise_ingestion_complete=true
-RETURN episode.uuid AS uuid, size($mentions) AS linked
-""".strip()
-
-
-class ControlledEventProjector:
-    def __init__(self, graphiti: Graphiti):
-        self._graphiti = graphiti
-        self._resolver = CanonicalEntityResolver(graphiti, resolve_semantically=resolve_with_graphiti_vectors)
-
-    async def project(self, historical: HistoricalEvent) -> None:
-        content = json.dumps({"id": historical.id, **historical.event.model_dump(mode="json"), "status": "ACTIVE"},
-                             ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        records, _, _ = await self._graphiti.driver.execute_query(FIND_EVENT, name=historical.id,
-                                                                   group_id=GRAPHITI_GROUP_ID, routing_="r")
-        if len(records) > 1:
-            raise RuntimeError("multiple Graphiti Episodes share one Event identity")
-        if records:
-            row = records[0]
-            if row["content"] != content:
-                raise RuntimeError("Graphiti Event Episode conflicts with Data Event")
-            if row["complete"] and row["episode_kind"] == EVENT_EPISODE_KIND and row["domain_object_id"] == historical.id:
-                return
-        episode_uuid = str(uuid5(NAMESPACE_URL, f"urn:tidewise:event-episode:{historical.id}"))
-        created_at = datetime.now(UTC)
-        valid_at = historical.event.occurred_at or historical.event.announced_at or historical.event.semantic.effective_at
-        assert valid_at is not None
-        episode = EpisodicNode(uuid=episode_uuid, name=historical.id, group_id=GRAPHITI_GROUP_ID, labels=[],
-            source="json", source_description="Published canonical Event from Data Service", content=content,
-            created_at=created_at, valid_at=valid_at)
-        candidates, _ = await extract_nodes(self._graphiti.clients, episode, [], ENTITY_TYPES, ["Entity"], EXTRACTION_INSTRUCTIONS)
-        mentions = await self._resolver.resolve(candidates, episode)
-        payload = [{"entity_uuid": item.entity_uuid, "entity_type": item.entity_type,
-                    "edge_uuid": str(uuid5(NAMESPACE_URL, f"urn:tidewise:event-mention:{episode_uuid}:{item.entity_uuid}"))}
-                   for item in mentions]
-        written, _, _ = await self._graphiti.driver.execute_query(WRITE_EVENT, episode_uuid=episode_uuid,
-            group_id=GRAPHITI_GROUP_ID, name=historical.id, source_description=episode.source_description,
-            content=content, valid_at=valid_at, created_at=created_at, mentions=payload,
-            target_uuids=[item.entity_uuid for item in mentions])
-        if len(written) != 1 or int(written[0]["linked"]) != len(payload):
-            raise RuntimeError("canonical Event mentions changed during projection")

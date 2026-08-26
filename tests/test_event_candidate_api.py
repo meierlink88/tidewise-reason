@@ -123,6 +123,7 @@ class EventCandidateAPITest(unittest.TestCase):
         self.assertIn("swagger-ui", swagger.text)
 
         contract = self.client.get("/openapi.json").json()
+        self.assertNotIn("/api/reason/v1/evidence-episodes", contract["paths"])
         security_schemes = contract["components"]["securitySchemes"]
         self.assertIn("HTTPBearer", security_schemes)
         self.assertEqual(security_schemes["HTTPBearer"]["scheme"], "bearer")

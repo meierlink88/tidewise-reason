@@ -4,7 +4,7 @@ This repository owns the Tidewise Reasoning Server and its dedicated Graphiti Ne
 
 - Keep the Reasoning Server and Graphiti Neo4j provider in the dedicated `tidewise-reasoning`
   Compose project. The services are `api` and `neo4j`, with fixed local container names
-  `reason-graphiti-api` and `reason-graphiti-neo4j`.
+  `reason-service` and `reason-graphiti-neo4j`.
 - Keep the Reasoning Server HTTP binding fixed at loopback-only `127.0.0.1:8890`; do not introduce
   an environment-variable port override.
 - Reuse the external `tidewise-local` network. MySQL and MinIO remain independently operated by

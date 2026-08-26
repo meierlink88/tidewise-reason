@@ -12,12 +12,11 @@ from pydantic import AnyHttpUrl, Field, SecretStr, field_validator
 from ingestion.app import create_app
 from ingestion.episcode.event.adapters import (
     CompositeEventHistory,
-    ControlledEventProjector,
     DataEventClient,
     GraphitiLLMComparator,
 )
+from ingestion.episcode.event.graphiti import GraphitiEventProjector
 from ingestion.episcode.event.resolver import EventResolver
-from ingestion.episcode.evidence.graphiti import AuthoritativeEpisodeWriter
 from projection.runtime import GraphitiProviderConfig, create_graphiti
 
 
@@ -61,18 +60,19 @@ def create_runtime_app(config: IngestionRuntimeConfig) -> FastAPI:
         str(config.tidewise_data_base_url),
         config.tidewise_data_service_token.get_secret_value(),
     )
+    projector = GraphitiEventProjector(graphiti)
     resolver = EventResolver(
         CompositeEventHistory(graphiti, data),
         GraphitiLLMComparator(graphiti),
         data,
-        ControlledEventProjector(graphiti),
+        projector,
     )
     return create_app(
         state_path=config.state_path,
         service_token=config.service_token.get_secret_value(),
-        writer=AuthoritativeEpisodeWriter(graphiti),
         event_resolver=resolver,
-        dependency_readiness=(data.ready,),
+        dependency_readiness=(data.ready, projector.ready),
+        shutdown_callbacks=(projector.close,),
         worker_poll_interval_seconds=config.worker_poll_interval_seconds,
         worker_batch_size=config.worker_batch_size,
     )

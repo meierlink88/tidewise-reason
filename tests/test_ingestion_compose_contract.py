@@ -12,7 +12,8 @@ class IngestionComposeContractTest(unittest.TestCase):
         compose = (REPO_ROOT / "infra/graphiti/compose.yaml").read_text(encoding="utf-8")
         dockerfile = (REPO_ROOT / "infra/ingestion/Dockerfile").read_text(encoding="utf-8")
 
-        self.assertIn("container_name: reason-graphiti-api", compose)
+        self.assertIn("container_name: reason-service", compose)
+        self.assertNotIn("container_name: reason-graphiti-api", compose)
         self.assertIn("127.0.0.1:8890:8890", compose)
         self.assertNotIn("REASON_API_PORT", compose)
         self.assertIn("graphiti-api-state:/var/lib/tidewise-reason", compose)

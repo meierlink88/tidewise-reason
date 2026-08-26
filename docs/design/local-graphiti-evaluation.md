@@ -14,17 +14,17 @@ recoverable from those volumes.
 
 ## Runtime boundaries
 
-- The Compose project is `tidewise-reasoning`; `neo4j` owns the graph provider and `api` owns
-  Evidence Episode ingestion.
+- The Compose project is `tidewise-reasoning`; `neo4j` owns the graph provider and `api` owns Event
+  Candidate resolution and formal Event projection.
 - Ports 7474 and 7687 bind to loopback. The Reasoning Server is fixed at loopback port 8890.
 - The image and Graphiti package are version pinned.
 - The Python environment, model credentials, Data Service credential, Graphiti data and generated
   analysis artifacts stay outside Git.
 - MySQL and MinIO remain owned by `tidewise-infra`.
-- For the original evaluation CLI, Atomic Evidence is read through Data Service's versioned API.
-  For the accepted ingestion path, Agent OS pushes the complete record to Reason only after Data
-  publication; Reason never enters another service's database or container. ADR 0002 owns this
-  newer boundary.
+- For the original evaluation CLI, Atomic Evidence was read through Data Service's versioned API.
+  The active runtime does not project Evidence into Graphiti. Agent OS sends Event Candidates and
+  Evidence IDs; Reason publishes formal Events through Data before native Graphiti projection.
+  ADR 0007 owns this boundary.
 - This repository no longer carries an OpenSPG UAT deployment bundle.
 
 Graphiti requires Neo4j 5.26 or later. Neo4j 5.26 is selected over FalkorDB for this first PoC to
@@ -43,9 +43,9 @@ foundation projection, Evidence ingestion or Event ingestion. Evidence remains a
 than a custom Entity.
 
 The original evaluation contract is frozen in
-[ADR 0001](../adr/0001-use-graphiti-for-local-temporal-memory-evaluation.md); published Evidence
-Episode delivery is frozen in
-[ADR 0002](../adr/0002-ingest-published-evidence-as-graphiti-episodes.md).
+[ADR 0001](../adr/0001-use-graphiti-for-local-temporal-memory-evaluation.md); the active Event-only
+Episode boundary is frozen in
+[ADR 0007](../adr/0007-project-only-events-through-native-graphiti-episodes.md).
 
 ## Lifecycle
 

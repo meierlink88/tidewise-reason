@@ -21,7 +21,7 @@ assert {item["host_ip"] for item in service["ports"]} == {"127.0.0.1"}
 assert config["volumes"]["graphiti-neo4j-data"]["name"] == "tidewise-reason_graphiti-neo4j-data"
 assert config["volumes"]["graphiti-neo4j-logs"]["name"] == "tidewise-reason_graphiti-neo4j-logs"
 api = config["services"]["api"]
-assert api["container_name"] == "reason-graphiti-api"
+assert api["container_name"] == "reason-service"
 assert api["ports"][0]["host_ip"] == "127.0.0.1"
 assert api["ports"][0]["target"] == 8890
 assert api["ports"][0]["published"] == "8890"
@@ -45,7 +45,6 @@ grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/verify.sh"
 grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/start-api.sh"
 grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/stop-api.sh"
 grep -q 'require_private_graphiti_env' "$repo_root/infra/graphiti/verify-api.sh"
-grep -q 'require_private_graphiti_env' "$repo_root/scripts/verify-evidence-episode.sh"
 grep -Fq 'snapshot_file="$(mktemp)"' "$repo_root/scripts/initialize-chainnode-graph.sh"
 grep -Fq '> "$snapshot_file"' "$repo_root/scripts/initialize-chainnode-graph.sh"
 grep -Fq '< "$snapshot_file"' "$repo_root/scripts/initialize-chainnode-graph.sh"
@@ -76,8 +75,14 @@ if rg -n 'graphiti_core[.]utils[.]bulk_utils|add_nodes_and_edges_bulk' \
   exit 1
 fi
 
-if rg -n '[.]add_episode[(]' "$repo_root/ingestion/episcode/evidence"; then
-  echo 'Evidence ingestion delegates to Graphiti add_episode and can create non-authoritative Entities' >&2
+if ! rg -n 'self[.]_graphiti[.]add_episode[(]' \
+  "$repo_root/ingestion/episcode/event/graphiti/projector.py"; then
+  echo 'Event projection does not delegate to the native Graphiti Episode pipeline' >&2
+  exit 1
+fi
+
+if test -d "$repo_root/ingestion/episcode/evidence"; then
+  echo 'Retired Evidence Episode ingestion is still present' >&2
   exit 1
 fi
 
@@ -95,8 +100,8 @@ PYTHONPYCACHEPREFIX="$pycache_root" python3 -m py_compile \
   "$repo_root"/initialization/chainnode/*.py \
   "$repo_root"/ingestion/*.py \
   "$repo_root"/ingestion/episcode/*.py \
-  "$repo_root"/ingestion/episcode/evidence/*.py \
-  "$repo_root"/ingestion/episcode/evidence/graphiti/*.py \
+  "$repo_root"/ingestion/episcode/event/*.py \
+  "$repo_root"/ingestion/episcode/event/graphiti/*.py \
   "$repo_root"/tests/test_ontology_contract.py
 bash "$repo_root/scripts/test-ontology.sh"
 bash "$repo_root/scripts/test-projection.sh"

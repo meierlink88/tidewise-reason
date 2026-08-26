@@ -9,11 +9,6 @@ trap 'rm -rf "$pycache_root"' EXIT
 cd "$repo_root"
 PYTHONPATH="$repo_root" PYTHONPYCACHEPREFIX="$pycache_root" \
   "$runtime_python" -m unittest \
-    tests.test_evidence_episode_converter \
-    tests.test_evidence_episode_api \
-    tests.test_evidence_episode_worker \
-    tests.test_evidence_episode_worker_loop \
-    tests.test_authoritative_evidence_graphiti_writer \
     tests.test_graphiti_group_contract \
     tests.test_ingestion_runtime \
     tests.test_ingestion_compose_contract \

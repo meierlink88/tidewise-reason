@@ -41,7 +41,7 @@ unscoped `docker compose down`, `--remove-orphans`, or volume-removal commands i
 ## Graphiti Ontology
 
 The formal Graphiti extraction types live in [`ontology/`](ontology/). The
-`reasoning-ontology/v2` catalog mirrors selected Tidewise Data entity and stable-link contracts and
+`reasoning-ontology/v3` catalog mirrors selected Tidewise Data entity and stable-link contracts and
 contains no authoritative facts. Evidence does not enter Graphiti.
 
 ```bash
@@ -125,6 +125,18 @@ or writes Tidewise Data, never sets `data_object_id`, and never deletes graph da
 bash scripts/initialize-geopolitic-demo.sh plan
 bash scripts/initialize-geopolitic-demo.sh run
 bash scripts/initialize-geopolitic-demo.sh verify
+```
+
+The macroeconomic demo catalog writes 78 reusable policy-action nodes across ten controlled
+categories. It resolves only the existing canonical Country nodes for China, the United States,
+Japan, South Korea and the United Kingdom, then writes the curated `IMPLEMENTS` applicability
+relations. These relations do not claim that a policy is currently active. The initializer never
+reads or writes Tidewise Data, never sets `data_object_id`, and never deletes graph data:
+
+```bash
+bash scripts/initialize-macroeconomic-demo.sh plan
+bash scripts/initialize-macroeconomic-demo.sh run
+bash scripts/initialize-macroeconomic-demo.sh verify
 ```
 
 ## Event Candidate Ingestion

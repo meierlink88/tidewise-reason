@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import unittest
 
 from pydantic import BaseModel, ValidationError
@@ -12,6 +13,7 @@ from ontology import (
     ONTOLOGY_VERSION,
     ChainNodeBelongsToIndustryChain,
     Country,
+    CountryImplementsMacroEconomic,
     GeopoliticRivalry,
     MacroEconomic,
     Variable,
@@ -22,7 +24,7 @@ from ontology.enums import (
     GeopoliticRivalryStatus,
     GeopoliticRivalryType,
     MacroEconomicStatus,
-    MacroEconomicType,
+    MacroEconomicCategory,
 )
 
 
@@ -48,6 +50,7 @@ class OntologyContractTest(unittest.TestCase):
             {
                 "CountryInRegion",
                 "CountryMemberOfOrganization",
+                "CountryImplementsMacroEconomic",
                 "OrganizationInRegion",
                 "IndustryHasParent",
                 "IndustryChainMappedToIndustry",
@@ -76,7 +79,7 @@ class OntologyContractTest(unittest.TestCase):
             EDGE_TYPE_MAP[("IndustryChain", "Concept")],
             ["IndustryChainMappedToConcept"],
         )
-        self.assertEqual(ONTOLOGY_VERSION, "reasoning-ontology/v2")
+        self.assertEqual(ONTOLOGY_VERSION, "reasoning-ontology/v3")
 
     def test_graphiti_models_are_pydantic_classes_without_protected_fields(self) -> None:
         protected = {
@@ -95,6 +98,17 @@ class OntologyContractTest(unittest.TestCase):
             self.assertFalse(protected.intersection(model.model_fields))
             for field in model.model_fields.values():
                 self.assertTrue(field.description)
+
+    def test_public_ontology_descriptions_are_reviewable_chinese(self) -> None:
+        chinese = re.compile(r"[\u4e00-\u9fff]")
+        for name, model in {**ENTITY_TYPES, **EDGE_TYPES}.items():
+            self.assertRegex(model.__doc__ or "", chinese, msg=f"{name} 缺少中文定义")
+            for field_name, field in model.model_fields.items():
+                self.assertRegex(
+                    field.description or "",
+                    chinese,
+                    msg=f"{name}.{field_name} 缺少中文定义",
+                )
 
     def test_canonical_identity_is_validated_but_not_required_from_extraction(self) -> None:
         self.assertIsNone(Country().data_object_id)
@@ -123,7 +137,7 @@ class OntologyContractTest(unittest.TestCase):
     def test_catalog_is_serializable_and_exposes_source_target_pairs(self) -> None:
         catalog = ontology_catalog()
         json.dumps(catalog)
-        self.assertEqual(catalog["version"], "reasoning-ontology/v2")
+        self.assertEqual(catalog["version"], "reasoning-ontology/v3")
         self.assertEqual(
             catalog["entity_links"]["CountryInRegion"]["source_targets"],
             [{"source": "Country", "target": "Region"}],
@@ -138,10 +152,10 @@ class OntologyContractTest(unittest.TestCase):
         organization_description = " ".join(
             catalog["entities"]["Organization"]["description"].split()
         )
-        self.assertIn("province", region_description)
-        self.assertIn("Sichuan", region_description)
-        self.assertIn("company", organization_description)
-        self.assertIn("listed issuer", organization_description)
+        self.assertIn("省", region_description)
+        self.assertIn("四川", region_description)
+        self.assertIn("公司", organization_description)
+        self.assertIn("上市发行人", organization_description)
 
     def test_each_edge_is_owned_by_its_source_entity_schema(self) -> None:
         self.assertEqual(
@@ -152,6 +166,11 @@ class OntologyContractTest(unittest.TestCase):
             EDGE_TYPE_MAP[("Organization", "Region")],
             ["OrganizationInRegion"],
         )
+        self.assertEqual(
+            EDGE_TYPE_MAP[("Country", "MacroEconomic")],
+            ["CountryImplementsMacroEconomic"],
+        )
+        self.assertEqual(CountryImplementsMacroEconomic.model_fields, {})
 
     def test_chain_node_topology_links_expose_only_reasoning_identity(self) -> None:
         expected = {"data_object_id", "industry_chain_id"}
@@ -315,15 +334,16 @@ class OntologyContractTest(unittest.TestCase):
         )
         macro = MacroEconomic(
             data_object_id="MEC11111111-1111-4111-8111-111111111111",
-            name_en="Federal Reserve monetary policy cycle",
-            macro_type="MONETARY",
-            description="A stable blueprint for changes in United States monetary policy.",
+            policy_key="RATE_HIKE",
+            name_en="Rate Hike",
+            category="MONETARY",
+            description="Raise a policy interest rate.",
             status="ACTIVE",
         )
 
         self.assertEqual(rivalry.rivalry_type.value, "GEOPOLITICAL")
         self.assertEqual(rivalry.influenced_regions, [])
-        self.assertEqual(macro.macro_type.value, "MONETARY")
+        self.assertEqual(macro.category.value, "MONETARY")
         self.assertEqual(
             set(GeopoliticRivalry.model_fields),
             {
@@ -342,8 +362,9 @@ class OntologyContractTest(unittest.TestCase):
             set(MacroEconomic.model_fields),
             {
                 "data_object_id",
+                "policy_key",
                 "name_en",
-                "macro_type",
+                "category",
                 "description",
                 "status",
                 "updated_at",
@@ -358,8 +379,19 @@ class OntologyContractTest(unittest.TestCase):
             {"ACTIVE", "DORMANT", "RESOLVED"},
         )
         self.assertEqual(
-            {item.value for item in MacroEconomicType},
-            {"MONETARY", "FISCAL", "TRADE_POLICY", "REGULATORY", "DATA_ECONOMIC"},
+            {item.value for item in MacroEconomicCategory},
+            {
+                "MONETARY",
+                "FISCAL",
+                "INDUSTRIAL_POLICY",
+                "GROWTH_CYCLE",
+                "INFLATION_PRICES",
+                "EMPLOYMENT_LABOR",
+                "FINANCIAL_STABILITY",
+                "EXTERNAL_SECTOR",
+                "DEBT_LEVERAGE",
+                "REAL_ESTATE",
+            },
         )
         self.assertEqual(
             {item.value for item in MacroEconomicStatus},
@@ -370,7 +402,9 @@ class OntologyContractTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             GeopoliticRivalry(rivalry_type="CONFLICT")
         with self.assertRaises(ValidationError):
-            MacroEconomic(macro_type="INFLATION")
+            MacroEconomic(category="INFLATION")
+        with self.assertRaises(ValidationError):
+            MacroEconomic(policy_key="rate_hike")
         with self.assertRaises(ValidationError):
             MacroEconomic(
                 data_object_id="GPR11111111-1111-4111-8111-111111111111"

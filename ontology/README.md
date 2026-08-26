@@ -6,11 +6,12 @@ the stable fields needed for entity resolution.
 
 ## Version
 
-The current catalog is `reasoning-ontology/v2` and contains:
+The current catalog is `reasoning-ontology/v3` and contains:
 
 - Entity types: `Country`, `Region`, `Organization`, `Industry`, `Concept`, `IndustryChain`,
   `ChainNode`, `Variable`, `GeopoliticRivalry`, `MacroEconomic`.
-- Entity-link types: `CountryInRegion`, `CountryMemberOfOrganization`, `OrganizationInRegion`,
+- Entity-link types: `CountryInRegion`, `CountryMemberOfOrganization`,
+  `CountryImplementsMacroEconomic`, `OrganizationInRegion`,
   `IndustryHasParent`, `IndustryChainMappedToIndustry`, `IndustryChainMappedToConcept`,
   `ChainNodeBelongsToIndustryChain`,
   `ChainNodeInputTo`, `ChainNodeIsComponentOf`, `ChainNodeDependsOn`.
@@ -33,9 +34,16 @@ duplicated into Graphiti.
 Variable identities or static Variable-to-Anchor facts. Direction, impact period and the concrete
 Anchor belong to a later Signal Fact.
 
-`GeopoliticRivalry` and `MacroEconomic` mirror their authoritative Tidewise Data blueprint fields
-and closed enums. They intentionally publish no object relationships. Geopolitic actor and region
-texts remain reviewed text and do not establish Country, Region or Organization facts.
+`GeopoliticRivalry` is a stable geopolitical topic blueprint rather than one concrete Event.
+`MacroEconomic` is a reusable policy action such as a rate hike or fiscal stimulus; its `category`
+is one of ten controlled macro-policy lines and the country name is never encoded into its identity.
+`CountryImplementsMacroEconomic` expresses institutional applicability, not a claim that the country
+is currently executing the policy. Geopolitical actor and region texts remain reviewed text and do
+not establish Country, Region or Organization facts.
+
+All public Pydantic entity/link docstrings and field descriptions are written in Chinese so they can
+be reviewed directly and used as clear LLM extraction instructions. Python type names, field names,
+enum values and stable business keys remain English for contract compatibility.
 
 Each `ontology/entities/<entity>.py` file owns one Entity model and all relationships for which that
 Entity is the source. The file exports its local `ENTITY_TYPES`, `EDGE_TYPES` and `EDGE_TYPE_MAP`;

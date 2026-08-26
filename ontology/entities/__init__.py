@@ -11,6 +11,7 @@ from ontology.entities.concept import Concept
 from ontology.entities.country import (
     Country,
     CountryInRegion,
+    CountryImplementsMacroEconomic,
     CountryMemberOfOrganization,
 )
 from ontology.entities.geopolitic_rivalry import GeopoliticRivalry
@@ -34,6 +35,7 @@ __all__ = [
     "Concept",
     "Country",
     "CountryInRegion",
+    "CountryImplementsMacroEconomic",
     "CountryMemberOfOrganization",
     "GeopoliticRivalry",
     "Industry",

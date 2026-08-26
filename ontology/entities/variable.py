@@ -1,4 +1,4 @@
-"""Controlled Variable extraction and projection type owned by Tidewise Reason."""
+"""Tidewise Reason 拥有的受控 Variable 实体与目录校验规则。"""
 
 from collections.abc import Iterable
 from typing import Annotated
@@ -16,52 +16,52 @@ VariableID = Annotated[
 
 
 class Variable(TidewiseEntity):
-    """A globally reusable, controlled dimension that a Signal may change on an Anchor.
+    """全局可复用的受控观测维度，Signal 用它表达某个投研锚点发生了什么变化。
 
-    One Variable identity may apply to several Anchor types. Direction, impact period and the
-    concrete Anchor belong to the Signal Fact and never create Anchor-specific Variable copies.
+    同一 Variable 可适用于多种锚点类型。变化方向、影响周期、影响强度和具体锚点属于
+    Signal Fact，不应因不同锚点复制新的 Variable 实体。Variable 本身不是 Signal，也不表示看多或看空。
     """
 
     variable_id: VariableID = Field(
-        description="Stable lowercase key in the versioned Reason Variable catalog.",
+        description="Reason Variable 版本化目录中稳定、全小写的业务键。",
     )
     aliases: list[NonBlankText] = Field(
         default_factory=list,
-        description="Reviewed names that resolve to this same controlled Variable.",
+        description="经审阅且可解析到同一受控 Variable 的别名。",
     )
     definition: NonBlankText = Field(
-        description="Canonical meaning and boundary of the Variable.",
+        description="Variable 的标准含义与适用边界。",
     )
     measurement_basis: NonBlankText = Field(
         description=(
-            "Quantitative measurement or reviewed qualitative basis used to observe changes."
+            "用于观测变化的定量测量方式或经审阅的定性判定依据。"
         ),
     )
     unit: NonBlankText | None = Field(
         default=None,
-        description="Optional canonical unit; null when the measurement basis is qualitative.",
+        description="可选的标准计量单位；定性判定时为 null。",
     )
     allowed_anchor_types: list[AnalysisAnchorType] = Field(
         min_length=1,
         description=(
-            "Analysis Anchor types on which this Variable is meaningful; this applicability "
-            "metadata does not create Variable-to-Anchor facts."
+            "该 Variable 具有意义的投研锚点类型；这是适用性元数据，"
+            "不直接创建 Variable 到锚点的图事实。"
         ),
     )
     mutually_exclusive_variable_ids: list[VariableID] = Field(
         default_factory=list,
-        description="Controlled Variable keys that must not describe the same atomic observation.",
+        description="不得与当前 Variable 同时描述同一原子观测的受控 Variable 键。",
     )
     derived_from_variable_ids: list[VariableID] = Field(
         default_factory=list,
-        description="Controlled Variable keys from which this Variable may be explicitly derived.",
+        description="当前 Variable 可明确派生自哪些受控 Variable 键。",
     )
     maintenance_owner: NonBlankText = Field(
-        description="Domain owner responsible for reviewing the Variable definition.",
+        description="负责审阅与维护 Variable 定义的领域负责人。",
     )
     catalog_version: str = Field(
         pattern=r"^variable-catalog/v[1-9][0-9]*$",
-        description="Versioned catalog contract under which the Variable is defined.",
+        description="定义当前 Variable 的版本化目录合同。",
     )
 
     @field_validator("aliases")

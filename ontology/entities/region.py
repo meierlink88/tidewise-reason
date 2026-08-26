@@ -1,4 +1,4 @@
-"""Region extraction type derived from Tidewise Data's Region schema."""
+"""源自 Tidewise Data Region schema 的区域实体。"""
 
 from pydantic import BaseModel, Field
 
@@ -7,35 +7,35 @@ from ontology.enums import RegionType
 
 
 class Region(TidewiseEntity):
-    """A reviewed global or cross-country analysis region such as East Asia or Middle Africa.
+    """经审阅的全球或跨国分析区域，如东亚或中非。
 
-    It may be geographic, continental, multilateral or investment-defined. It is never a country
-    or a national subdivision such as a province, state, city or county; Sichuan is not a Region.
+    可以是地理、大洲、多边机制或投资口径定义的区域。它不是国家，也不是省、州、市、县等
+    国内行政区；四川不是本模型中的 Region。
     """
 
     data_object_id: str | None = Field(
         default=None,
         pattern=r"^REG[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
-        description="Canonical Tidewise Data Region ID; never infer or invent this value.",
+        description="Tidewise Data 中权威的 Region ID；禁止推测或编造。",
     )
     code: str | None = Field(
         default=None,
         pattern=r"^[A-Z][A-Z0-9_]*$",
-        description="Stable uppercase Region business code.",
+        description="稳定的全大写 Region 业务代码。",
     )
     name_en: str | None = Field(
         default=None,
         min_length=1,
-        description="Official English Region name.",
+        description="Region 的官方英文名称。",
     )
     region_type: RegionType | None = Field(
         default=None,
-        description="Whether the Region is continental, geographic, multilateral or investment-defined.",
+        description="Region 是大洲、地理、多边机制还是投资口径定义的受控类型。",
     )
     description: str | None = Field(
         default=None,
         min_length=1,
-        description="Canonical explanation of the Region's boundary or business meaning.",
+        description="Region 范围边界或业务含义的权威说明。",
     )
 
 

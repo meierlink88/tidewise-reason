@@ -348,10 +348,11 @@ group_id           = neo4j
 
 - Episode UUID 从正式 Event ID 确定性派生；同一 Event 重试不得创建第二个 Episode；
 - Graphiti 内容只来自 Data 返回的正式 Event，不以 Agent OS Candidate 作为权威快照；
-- 只允许链接到已经投影且带 `data_object_id` 的标准 Entity；未匹配 mention 不创建 Entity；
+- 使用 Graphiti 标准 `add_episode()` 完成实体抽取、解析、上下文实体创建、Fact 抽取、去重与
+  时态失效；LLM 创建的上下文 Entity 不得获得权威 `data_object_id`；
 - Event 身份语义随 Data 正式 Event 一起投影，不维护第二份 `match_identity`；
-- 第一版不让通用 `add_episode` 自由创建 Entity 或任意 Fact，应复用现有受控 Episode Writer
-  原理，建立 Event Episode 与审核通过的标准 Anchor Link；
+- 原生 Fact 只表达 Event 直接支持的事实，不得把 Variable、Signal、Storyline、投资影响或
+  预测写成 Event Fact；这些内容由后续 Event Analysis 和 Storyline Reasoning 负责；
 - Graphiti 失败不回滚 Data Event。Reasoning 持续重试投影，并把状态暴露为
   `FAILED_RETRYING`；Data 中的 Event 仍然有效。
 
@@ -377,7 +378,7 @@ ingestion/episcode/event/
     client.py            # Data Event create 适配器
     contracts.py         # Data wire DTO，不复用 Agent OS DTO
   graphiti/
-    projector.py         # 正式 Event 受控投影
+    projector.py         # 正式 Event 的 Graphiti 原生 Episode 投影
     retriever.py         # Event Episode 全文/邻域查询
 ```
 

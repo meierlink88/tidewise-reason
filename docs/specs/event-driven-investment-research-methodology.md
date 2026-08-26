@@ -791,9 +791,9 @@ Graphiti 只承载或投影七类顶层领域数据：Evidence、Event、Entity�
 类型的 type、role 或属性表达。Analysis Context、Analysis Result、Run Card 和监控运行产物
 保存在 Artifact Store；Storyline 可以保存其不可变引用，但不得把它们提升为新的事实节点。
 
-Evidence 即使为 provenance 或 Event Curation 投影到 Graphiti，也必须与下游推理查询隔离。
-Event Analysis 和 Investment Reasoning 的 Context assembler 从 Event 开始，不返回 Evidence
-正文、摘要或片段；Reasoning Tree 的首个事实节点是 Event。
+Evidence 不投影到 Graphiti。Event Analysis 和 Investment Reasoning 的 Context assembler
+从正式 Event 开始，不返回 Evidence 正文、摘要或片段；Reasoning Tree 的首个事实节点是
+Event，Evidence 仅通过 Data 权威 Link 提供审计追溯。
 
 Graphiti Ingestion 可以使用 LLM 识别 5W1H mention、解析规范 Entity 候选和提出直接事实
 关系，但不得为稳定主数据生成新 canonical ID。通过门禁的 Event Anchor Link、Signal、

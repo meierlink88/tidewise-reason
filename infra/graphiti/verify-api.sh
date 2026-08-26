@@ -24,7 +24,7 @@ curl --fail --silent --show-error "http://127.0.0.1:8890/healthz" | grep -q '"st
 curl --fail --silent --show-error "http://127.0.0.1:8890/readyz" | grep -q '"status":"ready"'
 curl --silent --show-error \
   -H "Authorization: Bearer ${REASON_API_SERVICE_TOKEN}" \
-  "http://127.0.0.1:8890/api/reason/v1/evidence-episodes/EVD00000000-0000-4000-8000-000000000000" \
+  "http://127.0.0.1:8890/api/reason/v1/event-candidates/evt-submission-00000000-0000-4000-8000-000000000000" \
   --output /dev/null --write-out '%{http_code}' | grep -q '^404$'
 
-echo 'PASS Reason ingestion API is healthy and requires authenticated Evidence access'
+echo 'PASS Reason API is healthy and requires authenticated Event Candidate access'

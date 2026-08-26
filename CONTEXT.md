@@ -82,14 +82,17 @@ _Avoid_: Direct Impact Assertion, synthetic industry-chain edge, fixed-hop propa
 **Evidence**:
 An immutable, source-addressable input used by the upstream Event curation work to establish,
 split, normalize, support or challenge an Event. Evidence is retained for provenance and audit but
-does not enter Event Analysis or Investment Reasoning as a direct inference input.
+does not enter Event Analysis or Investment Reasoning as a direct inference input and is not
+projected into Graphiti.
 _Avoid_: Event, Signal, downstream AgentContext input, LLM conclusion, unsupported market opinion
 
 **Event**:
 A time-scoped factual occurrence, plan or evaluation scenario produced by upstream Evidence
 curation and accepted as the factual starting point of downstream reasoning. Live and isolated
 evaluation Events use the same domain language; their source, public-knowledge and ingestion times
-remain distinct and auditable through upstream Evidence links.
+remain distinct and auditable through upstream Evidence links. A Data-published Event enters
+Graphiti through its native Episode pipeline, which may create contextual Entities and explicit
+Facts without making them authoritative Tidewise master data.
 _Avoid_: Research Event, Scenario Event, Signal, forecast, investment conclusion
 
 **Event Candidate Submission**:

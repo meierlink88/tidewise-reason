@@ -6,7 +6,7 @@ the stable fields needed for entity resolution.
 
 ## Version
 
-The current catalog is `evidence-curation/v3` and contains:
+The current catalog is `reasoning-ontology/v1` and contains:
 
 - Entity types: `Country`, `Region`, `Organization`, `Industry`, `Concept`, `IndustryChain`,
   `ChainNode`.
@@ -41,9 +41,9 @@ Pass model definitions—not all Entity instances—to Graphiti:
 from ontology import EDGE_TYPE_MAP, EDGE_TYPES, ENTITY_TYPES
 
 await graphiti.add_episode(
-    name=evidence_id,
-    episode_body=evidence_json,
-    source_description="Tidewise Atomic Evidence",
+    name=event_id,
+    episode_body=event_json,
+    source_description="Published canonical Event from Data Service",
     reference_time=reference_time,
     group_id="neo4j",
     entity_types=ENTITY_TYPES,
@@ -53,6 +53,6 @@ await graphiti.add_episode(
 ```
 
 Canonical Entity and stable Link facts are projected once into the real Neo4j Community `neo4j`
-group. Each Evidence
-call contains only the current Evidence Episode. Future foundation, Evidence and Event adapters may
-select smaller catalog subsets; they must not copy every graph fact into every Episode.
+group. Evidence is not projected into Graphiti. Each native `add_episode` call contains only the
+current formal Event; foundation and Event adapters may select smaller catalog subsets and must not
+copy every graph fact into every Episode.

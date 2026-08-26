@@ -21,10 +21,10 @@ must not become the Event or Evidence Link authority.
 - `SAME_EVENT` is a terminal no-op: return the matched Event ID, do not publish to Data, do not add an
   Evidence Link, and do not write Graphiti.
 - New or related-but-distinct occurrences are published to Data first. Only the returned formal Event
-  is projected as an `EVENT` Episode, using a deterministic Episode identity and links only to existing
-  canonical Entities.
-- Candidate submissions are workflow records, not graph objects. Arbitrary Graphiti Fact extraction
-  remains disabled on this path.
+  is projected as an `EVENT` Episode, using a deterministic Episode identity. ADR 0007 supersedes
+  the original canonical-only projection restriction with Graphiti's native Episode pipeline.
+- Candidate submissions are workflow records, not graph objects. Graphiti extracts only explicit
+  Event facts after Data publication; Candidate content never enters the graph directly.
 
 ## Consequences
 

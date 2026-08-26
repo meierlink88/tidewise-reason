@@ -1,6 +1,6 @@
 # ADR 0002: Ingest published Evidence as Graphiti Episodes
 
-- Status: Accepted
+- Status: Superseded by [ADR 0007](0007-project-only-events-through-native-graphiti-episodes.md)
 - Date: 2026-08-24
 - Issues: [#14](https://github.com/meierlink88/tidewise-reason/issues/14),
   [#16](https://github.com/meierlink88/tidewise-reason/issues/16)
@@ -48,7 +48,7 @@ ingestion. Existing nodes and relationships are migrated in place by changing on
 Reason application concern rather than a Neo4j Community database name.
 
 The API runs as the separate `api` service in the `tidewise-reasoning` Compose project, with the
-fixed container name `reason-graphiti-api`, fixed loopback port `8890`, private bearer token and
+fixed container name `reason-service`, fixed loopback port `8890`, private bearer token and
 dedicated SQLite volume. The legacy OpenSPG runtime was later removed by ADR 0006.
 
 ## Consequences

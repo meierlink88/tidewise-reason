@@ -155,8 +155,8 @@ Storyline ──ASSOCIATED_WITH──> Event / Signal
 Company ──EXPOSED_TO──> ChainNode               # 只有推导到公司时才成为必需
 ```
 
-其中 Evidence→Event 可以存入 Graphiti 供审计，但下游 Context assembler 必须过滤 Evidence
-节点和正文。Reasoning Tree 从 Event 开始，不从 Evidence 开始。
+Evidence→Event 权威关系留在 Data，不写入 Graphiti。Graphiti 与 Context assembler 从正式
+Event 开始；Reasoning Tree 从 Event 开始，不从 Evidence 开始。
 
 ### 1.4 当前不做
 

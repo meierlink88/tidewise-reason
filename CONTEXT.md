@@ -79,9 +79,18 @@ Region or Organization relationships.
 _Avoid_: Event category, Storyline, inferred Actor relation, GeopoliticalRivalry alias type
 
 **MacroEconomic**:
-A stable Tidewise Data narrative blueprint for one monetary, fiscal, trade-policy, regulatory or
-data-economic subject. It has no implied Country, Region, Institution or Storyline relationship.
-_Avoid_: Event category, one economic data release, MacroEconomics alias type, inferred ownership
+A reusable, stable macroeconomic policy action such as a rate hike, rate cut, fiscal stimulus or
+industrial subsidy. Its controlled `category` places it in one of ten policy lines; a country name
+is never encoded into the MacroEconomic identity.
+_Avoid_: Country-specific duplicate, Event category, one economic data release, current policy state,
+MacroEconomics alias type
+
+**Country Implements MacroEconomic**:
+A reviewed institutional-applicability relation from one canonical Country to one reusable
+MacroEconomic policy action. It means the country's policy system can use that action; it does not
+claim that the country is currently executing it. A concrete execution remains an Event/Fact with
+business-valid time.
+_Avoid_: Current policy announcement, policy effectiveness, Event, country name inside policy node
 
 **Signal**:
 A time-scoped, Event-linked statement that a controlled Variable changes or holds on one Analysis

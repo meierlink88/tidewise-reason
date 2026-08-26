@@ -1,4 +1,4 @@
-"""Shared Graphiti validation policy for Tidewise entity and edge types."""
+"""Tidewise 图实体与关系类型共用的 Graphiti 校验规则。"""
 
 from typing import Annotated
 
@@ -9,12 +9,12 @@ NonBlankText = Annotated[str, StringConstraints(pattern=r"\S")]
 
 
 class TidewiseEntity(BaseModel):
-    """Base validation policy for Graphiti custom entity attributes."""
+    """Graphiti 自定义实体属性的基础校验规则。"""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
 class TidewiseEntityLink(BaseModel):
-    """Base validation policy for Graphiti custom edge attributes."""
+    """Graphiti 自定义实体关系属性的基础校验规则。"""
 
     model_config = ConfigDict(extra="forbid", frozen=True)

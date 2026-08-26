@@ -9,4 +9,6 @@ python_bin="$runtime_root/bin/python"
 [ -x "$python_bin" ] || { echo "Graphiti runtime is missing: $python_bin" >&2; exit 1; }
 
 cd "$repo_root"
-PYTHONPATH="$repo_root" exec "$python_bin" -m unittest tests/test_ontology_contract.py
+PYTHONPATH="$repo_root" exec "$python_bin" -m unittest \
+  tests/test_ontology_contract.py \
+  tests/test_macroeconomic_demo_initialization.py

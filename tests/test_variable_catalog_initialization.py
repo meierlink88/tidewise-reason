@@ -42,6 +42,13 @@ class VariableCatalogInitializationTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(supply.name, "市场供给")
         self.assertEqual(supply.uuid, variable_node_uuid("market_supply"))
+        exchange_rate = next(
+            node
+            for node in plan.nodes
+            if node.attributes["variable_id"] == "exchange_rate_pressure"
+        )
+        self.assertEqual(exchange_rate.name, "本币贬值压力")
+        self.assertIn("UP 表示贬值压力上升", exchange_rate.attributes["definition"])
 
     def test_catalog_rejects_ambiguous_aliases(self) -> None:
         values = load_catalog().model_dump(mode="json")
@@ -93,18 +100,25 @@ class VariableCatalogInitializationTest(unittest.IsolatedAsyncioTestCase):
                 "labels": ["Entity", "Variable"],
                 "embedding_dimension": 1024,
                 "relationship_count": 0,
+                "signal_relationship_count": 0,
             }
             for node in plan.nodes
         ]
 
         result = verify_state(plan, {"nodes": nodes})
         self.assertTrue(result["verified"])
-        self.assertEqual(result["relationship_total"], 0)
+        self.assertEqual(result["catalog_relationship_total"], 0)
+        self.assertEqual(result["signal_relationship_total"], 0)
 
         related = [dict(node) for node in nodes]
         related[0]["relationship_count"] = 1
-        with self.assertRaisesRegex(ProjectionError, "不应创建锚点"):
+        with self.assertRaisesRegex(ProjectionError, "只能具有"):
             verify_state(plan, {"nodes": related})
+
+        signal_related = [dict(node) for node in nodes]
+        signal_related[0]["relationship_count"] = 1
+        signal_related[0]["signal_relationship_count"] = 1
+        self.assertTrue(verify_state(plan, {"nodes": signal_related})["verified"])
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from typing import Literal, TypeVar, cast
 
 from graphiti_core import Graphiti
@@ -23,6 +24,8 @@ from analysis.event.contracts import (
 from projection.runtime import GRAPHITI_GROUP_ID
 
 StructuredModel = TypeVar("StructuredModel", bound=BaseModel)
+logger = logging.getLogger(__name__)
+STRUCTURED_OUTPUT_ATTEMPTS = 3
 
 
 class GraphitiEventAnalysisLLM:
@@ -53,14 +56,32 @@ class GraphitiEventAnalysisLLM:
         max_tokens: int,
         prompt_name: str,
     ) -> StructuredModel:
-        async with asyncio.timeout(120):
-            result = await self._client.generate_response(
-                messages,
-                max_tokens=max_tokens,
-                group_id=GRAPHITI_GROUP_ID,
-                prompt_name=prompt_name,
-            )
-        return response_model.model_validate(result)
+        last_error: Exception | None = None
+        for attempt in range(1, STRUCTURED_OUTPUT_ATTEMPTS + 1):
+            try:
+                async with asyncio.timeout(120):
+                    result = await self._client.generate_response(
+                        messages,
+                        response_model=response_model,
+                        max_tokens=max_tokens,
+                        group_id=GRAPHITI_GROUP_ID,
+                        prompt_name=prompt_name,
+                    )
+                return response_model.model_validate(result)
+            except Exception as exc:  # noqa: BLE001 - provider/schema boundary
+                last_error = exc
+                logger.warning(
+                    "event_analysis_structured_output_retry "
+                    "prompt_name=%s attempt=%d max_attempts=%d error_type=%s",
+                    prompt_name,
+                    attempt,
+                    STRUCTURED_OUTPUT_ATTEMPTS,
+                    type(exc).__name__,
+                )
+                if attempt < STRUCTURED_OUTPUT_ATTEMPTS:
+                    await asyncio.sleep(0)
+        assert last_error is not None
+        raise last_error
 
     async def classify(self, event: EventAnalysisInput) -> EventClassification:
         messages = [
@@ -173,6 +194,12 @@ class GraphitiEventAnalysisLLM:
                             "company, security, price, or valuation conclusions. expected_duration_days "
                             "is an estimated impact window, not Graphiti invalid_at. Return one JSON "
                             "object with exactly: fact; direction (UP|DOWN|MIXED|STABLE|UNKNOWN); "
+                            "Direction always describes the selected Variable itself as defined: "
+                            "UP means that Variable increases or strengthens, DOWN means it decreases "
+                            "or eases, MIXED means the Event creates material opposing direct effects, "
+                            "and STABLE means no material change. It never means bullish/bearish and "
+                            "never describes the Event action intensity. The fact and mechanism must "
+                            "state the same direction unambiguously. "
                             "magnitude (LOW|MEDIUM|HIGH|UNKNOWN); impact_onset_days (0..1095, "
                             "relative to the Event effective/occurrence time); impact_peak_days "
                             "(required and not before onset); expected_duration_days (1..1095); "
@@ -199,7 +226,11 @@ class GraphitiEventAnalysisLLM:
                             "the Event itself explicitly supports the supplied Anchor/Variable pair "
                             "or uses an unambiguous standard synonym. Reject topology propagation, "
                             "cross-variable inference, investment conclusions, and unsupported "
-                            "timing or mechanism. Return one JSON object with exactly: accepted "
+                            "timing or mechanism. Also reject when direction conflicts with the "
+                            "Variable definition, fact, or mechanism. UP means the selected Variable "
+                            "itself increases/strengthens; DOWN means it decreases/eases; MIXED requires "
+                            "opposing material direct effects; STABLE requires no material change. "
+                            "Return one JSON object with exactly: accepted "
                             "(boolean), reason_codes (short uppercase strings)."
                         ),
                     ),

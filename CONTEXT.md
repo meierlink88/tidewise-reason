@@ -46,9 +46,13 @@ not a global node property.
 _Avoid_: Company, Security, complete Industry Chain, temporary event action
 
 **Concept**:
-A cross-industry technology, policy, application, demand, business-model, ecosystem, event-narrative
-or market-theme fact with a stable identity and reviewed boundary.
-_Avoid_: Industry classification, Industry Chain, Industry Chain Node, temporary event tag
+A governed stock-market concept board or investment theme with a stable identity and reviewed
+boundary in authoritative Tidewise Data master data. It groups securities and industry objects that
+share an investment narrative, technology direction or business logic. A policy-themed Concept is
+still a governed market theme; a concrete policy action is not a Concept.
+_Avoid_: generic research concept, policy or regulatory action, temporary event tag, Product,
+technology term without a governed market-theme identity, Industry classification, Industry Chain,
+Industry Chain Node, Company, Security
 
 **Company**:
 An independently operating business entity belonging to one or more Industries, Industry Chain

@@ -23,8 +23,8 @@ from ontology.entities.variable import validate_variable_catalog
 from ontology.enums import (
     GeopoliticRivalryStatus,
     GeopoliticRivalryType,
-    MacroEconomicStatus,
     MacroEconomicCategory,
+    MacroEconomicStatus,
     VariableGroup,
     VariableRole,
 )
@@ -158,6 +158,20 @@ class OntologyContractTest(unittest.TestCase):
         self.assertIn("四川", region_description)
         self.assertIn("公司", organization_description)
         self.assertIn("上市发行人", organization_description)
+
+    def test_concept_description_is_limited_to_governed_market_concepts(self) -> None:
+        catalog = ontology_catalog()
+        description = " ".join(catalog["entities"]["Concept"]["description"].split())
+        concept_type_description = catalog["entities"]["Concept"]["json_schema"][
+            "properties"
+        ]["concept_type"]["description"]
+
+        self.assertIn("股票市场概念板块", description)
+        self.assertIn("权威主数据", description)
+        self.assertIn("出口管制", description)
+        self.assertIn("不是股票市场概念板块", description)
+        self.assertIn("POLICY", concept_type_description)
+        self.assertIn("不表示", concept_type_description)
 
     def test_each_edge_is_owned_by_its_source_entity_schema(self) -> None:
         self.assertEqual(

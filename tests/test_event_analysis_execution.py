@@ -12,7 +12,7 @@ from analysis.event.store import EventAnalysisStore
 from tests.test_event_analysis_pipeline import classification, event_input
 
 
-class EventAnalysisWorkflowTest(unittest.IsolatedAsyncioTestCase):
+class EventAnalysisExecutionTest(unittest.IsolatedAsyncioTestCase):
     async def test_enqueue_is_idempotent_and_worker_persists_terminal_outcome(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             store = EventAnalysisStore(Path(directory) / "reason.sqlite3")

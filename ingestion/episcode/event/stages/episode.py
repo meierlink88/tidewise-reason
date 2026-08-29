@@ -1,22 +1,25 @@
-"""Native Graphiti Episode projection for formal Tidewise Events."""
+"""Internal native Graphiti Episode stage for formal Tidewise Events."""
 
 from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from uuid import NAMESPACE_URL, uuid5
 
 from graphiti_core import Graphiti
 from graphiti_core.nodes import EpisodeType, EpisodicNode
 from pydantic import BaseModel
 
 from ingestion.episcode.event.contracts import HistoricalEvent
+from ingestion.episcode.event.provenance import (
+    EVENT_SOURCE_DESCRIPTION,
+    PENDING_EVENT_SOURCE_DESCRIPTION,
+    event_episode_uuid,
+    formal_event_id_from_content,
+)
 from ontology import ENTITY_TYPES
 from projection.runtime import GRAPHITI_GROUP_ID
 
 EVENT_EPISODE_KIND = "EVENT"
-EVENT_SOURCE_DESCRIPTION = "Published canonical Event from Data Service"
-PENDING_EVENT_SOURCE_DESCRIPTION = "Pending canonical Event native projection"
 EVENT_ENTITY_TYPE_NAMES = (
     "Country",
     "Region",
@@ -29,26 +32,10 @@ EVENT_ENTITY_TYPE_NAMES = (
 
 
 def event_entity_types() -> dict[str, type[BaseModel]]:
-    """Return a fresh, explicitly approved extraction registry for one Event Episode."""
+    """Return a fresh approved extraction registry for one Event Episode."""
 
     return {name: ENTITY_TYPES[name] for name in EVENT_ENTITY_TYPE_NAMES}
 
-
-def event_episode_uuid(event_id: str) -> str:
-    """Return the durable Graphiti identity for one formal Data Event."""
-
-    return str(uuid5(NAMESPACE_URL, f"urn:tidewise:event-episode:{event_id}"))
-
-
-def formal_event_id_from_content(content: str) -> str | None:
-    """Read formal Event identity from Graphiti's native, durable Episode content."""
-
-    try:
-        payload = json.loads(content)
-    except (TypeError, ValueError):
-        return None
-    event_id = payload.get("id") if isinstance(payload, dict) else None
-    return event_id if isinstance(event_id, str) and event_id else None
 
 EXTRACTION_INSTRUCTIONS = """
 The JSON is one canonical investment Event published by Tidewise Data. Extract entities and factual
@@ -66,7 +53,9 @@ FIND_EVENT = """
 MATCH (episode:Episodic {group_id: $group_id})
 WHERE episode.uuid = $episode_uuid
 RETURN episode.uuid AS uuid, episode.name AS name, episode.content AS content,
-       episode.source_description AS source_description
+       episode.source_description AS source_description,
+       episode.episode_kind AS episode_kind,
+       episode.domain_object_id AS domain_object_id
 LIMIT 1
 """.strip()
 
@@ -78,17 +67,18 @@ SET episode.name = $title,
     episode.source_description = $source_description,
     episode.episode_kind = 'EVENT',
     episode.domain_object_id = $event_id
-RETURN episode.uuid AS uuid
+RETURN episode.uuid AS uuid, episode.episode_kind AS episode_kind,
+       episode.domain_object_id AS domain_object_id
 """.strip()
 
 
-class GraphitiEventProjector:
-    """Project a Data-published Event through Graphiti's native Episode pipeline."""
+class GraphitiEpisodeStage:
+    """Internal Pipeline stage; never a standalone Event publication interface."""
 
     def __init__(self, graphiti: Graphiti):
         self._graphiti = graphiti
 
-    async def project(self, historical: HistoricalEvent) -> str:
+    async def execute(self, historical: HistoricalEvent) -> str:
         episode_uuid = event_episode_uuid(historical.id)
         content = json.dumps(
             {
@@ -126,8 +116,6 @@ class GraphitiEventProjector:
             }:
                 raise RuntimeError("Graphiti Event Episode has a conflicting source identity")
             if source_description == EVENT_SOURCE_DESCRIPTION:
-                if row["name"] == historical.event.title:
-                    return projected_uuid
                 native_projection_required = False
 
         valid_at = (
@@ -174,7 +162,12 @@ class GraphitiEventProjector:
             content=content,
             source_description=EVENT_SOURCE_DESCRIPTION,
         )
-        if len(written) != 1 or str(written[0]["uuid"]) != projected_uuid:
+        if (
+            len(written) != 1
+            or str(written[0]["uuid"]) != projected_uuid
+            or written[0]["episode_kind"] != EVENT_EPISODE_KIND
+            or written[0]["domain_object_id"] != historical.id
+        ):
             raise RuntimeError("Graphiti Event Episode metadata was not persisted")
         return projected_uuid
 

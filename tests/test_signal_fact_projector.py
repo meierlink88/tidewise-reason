@@ -10,7 +10,7 @@ from graphiti_core.edges import EntityEdge
 from graphiti_core.nodes import EntityNode, EpisodicNode
 
 from analysis.event.graphiti.signals import GraphitiSignalFactProjector
-from ingestion.episcode.event.graphiti.projector import EVENT_SOURCE_DESCRIPTION
+from ingestion.episcode.event.provenance import EVENT_SOURCE_DESCRIPTION
 from tests.test_event_analysis_pipeline import (
     ANCHOR_UUID,
     EPISODE_UUID,
@@ -74,6 +74,17 @@ class SignalFactProjectorTest(unittest.IsolatedAsyncioTestCase):
         async def execute_query(query, **kwargs):
             if "signal_fact_existing_event_provenance" in query:
                 return [{"uuid": EPISODE_UUID, "content": episode.content}], None, None
+            if "signal_fact_link_event_episode" in query:
+                self.assertEqual(kwargs["episode_uuid"], EPISODE_UUID)
+                self.assertEqual(kwargs["event_id"], input_.event.id)
+                return [
+                    {
+                        "uuid": EPISODE_UUID,
+                        "episode_kind": "EVENT",
+                        "domain_object_id": input_.event.id,
+                        "entity_edges": [kwargs["fact_uuid"]],
+                    }
+                ], None, None
             raise AssertionError(query)
 
         driver.execute_query.side_effect = execute_query
@@ -117,9 +128,9 @@ class SignalFactProjectorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(written.attributes["direction"], "UP")
         self.assertEqual(written.attributes["expected_end_latest"], "2026-12-31T00:00:00Z")
         self.assertEqual(written.attributes["source_event_ids"], [event_input().event.id])
-        self.assertIn(fact_uuid, episode.entity_edges)
+        self.assertNotIn("analysis_run_id", written.attributes)
         save_edge.assert_awaited_once()
-        save_episode.assert_awaited_once()
+        save_episode.assert_not_awaited()
 
     async def test_missing_existing_endpoint_fails_before_add_triplet(self) -> None:
         from graphiti_core.errors import NodeNotFoundError

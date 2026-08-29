@@ -8,10 +8,10 @@ from fastapi import APIRouter, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from ingestion.episcode.event.contracts import EventCandidateAcceptance, EventCandidateRequest, EventCandidateStatus
-from ingestion.episcode.event.module import EventCandidateModule
+from ingestion.episcode.event.pipeline import EventCandidatePipeline
 
 
-def create_router(module: EventCandidateModule, *, service_token: str) -> APIRouter:
+def create_router(pipeline: EventCandidatePipeline, *, service_token: str) -> APIRouter:
     router = APIRouter(prefix="/api/reason/v1/event-candidates", tags=["Event candidates"])
     bearer = HTTPBearer(auto_error=False)
 
@@ -40,7 +40,7 @@ def create_router(module: EventCandidateModule, *, service_token: str) -> APIRou
         credentials: HTTPAuthorizationCredentials | None = Security(bearer),
     ) -> EventCandidateAcceptance:
         authorize(credentials)
-        return module.accept(request)
+        return pipeline.submit(request)
 
     @router.get(
         "/{submission_id}",
@@ -58,7 +58,7 @@ def create_router(module: EventCandidateModule, *, service_token: str) -> APIRou
         credentials: HTTPAuthorizationCredentials | None = Security(bearer),
     ) -> EventCandidateStatus:
         authorize(credentials)
-        result = module.get_status(submission_id)
+        result = pipeline.get_status(submission_id)
         if result is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not found")
         return result

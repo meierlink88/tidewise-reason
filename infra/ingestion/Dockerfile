@@ -16,6 +16,7 @@ COPY --chown=reason:reason ingestion ./ingestion
 COPY --chown=reason:reason analysis ./analysis
 COPY --chown=reason:reason ontology ./ontology
 COPY --chown=reason:reason projection ./projection
+COPY --chown=reason:reason reasoning ./reasoning
 
 USER reason
 

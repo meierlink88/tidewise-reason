@@ -1,4 +1,4 @@
-"""Durable Reason-owned workflow state for Event Candidate resolution."""
+"""Durable Reason-owned Pipeline state for Event Candidate resolution."""
 
 from __future__ import annotations
 

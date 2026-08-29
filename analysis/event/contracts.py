@@ -185,7 +185,6 @@ class SignalFactAttributes(BaseModel):
     provenance_confidence: ConfidenceLevel
     mechanism_confidence: ConfidenceLevel
     temporal_confidence: ConfidenceLevel
-    analysis_run_id: str = Field(min_length=1)
     methodology_version: str = Field(min_length=1)
 
 

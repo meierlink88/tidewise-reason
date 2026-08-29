@@ -19,7 +19,7 @@ from ingestion.episcode.event.contracts import (
     HistoricalEvent,
     PairComparison,
 )
-from ingestion.episcode.event.graphiti.projector import EVENT_SOURCE_DESCRIPTION
+from ingestion.episcode.event.provenance import EVENT_SOURCE_DESCRIPTION
 from ingestion.episcode.event.resolver import (
     EventHistoryUnavailable,
     PublicationRejected,

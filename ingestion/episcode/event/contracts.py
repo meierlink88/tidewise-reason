@@ -1,4 +1,4 @@
-"""Strict Agent OS and workflow contracts for Event Candidate resolution."""
+"""Strict Agent OS and Pipeline contracts for Event Candidate resolution."""
 
 from __future__ import annotations
 

@@ -1,5 +1,11 @@
-"""Event Candidate resolution, publication, and Graphiti projection."""
+"""Event Candidate resolution, publication, and Graphiti projection Pipeline."""
 
-from ingestion.episcode.event.module import EventCandidateModule
+__all__ = ["EventCandidatePipeline"]
 
-__all__ = ["EventCandidateModule"]
+
+def __getattr__(name: str):
+    if name == "EventCandidatePipeline":
+        from ingestion.episcode.event.pipeline import EventCandidatePipeline
+
+        return EventCandidatePipeline
+    raise AttributeError(name)

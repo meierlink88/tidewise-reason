@@ -8,6 +8,9 @@ from fastapi.testclient import TestClient
 
 from ingestion.app import create_app
 from ingestion.episcode.event.contracts import EventResolutionOutcome
+from ingestion.episcode.event.pipeline import EventCandidatePipeline
+from ingestion.episcode.event.resolver import EventResolution
+from ingestion.episcode.event.store import EventCandidateStore
 
 
 EVIDENCE_ID = "EVD11111111-1111-4111-8111-111111111111"
@@ -40,25 +43,30 @@ class StubResolver:
     async def resolve(
         self, submission, on_published=None, on_publication_started=None
     ):
-        return EventResolutionOutcome(
-            decision="NEW_EVENT",
-            event_id=EVENT_ID,
-            event_created=True,
-            evidence_link_result="CREATED",
-            graph_projection_status="SUCCEEDED",
-            reason_codes=["NO_SAME_OCCURRENCE_FOUND"],
-            matched_event_ids=[],
+        return EventResolution(
+            EventResolutionOutcome(
+                decision="NEW_EVENT",
+                event_id=EVENT_ID,
+                event_created=True,
+                evidence_link_result="CREATED",
+                graph_projection_status="SUCCEEDED",
+                reason_codes=["NO_SAME_OCCURRENCE_FOUND"],
+                matched_event_ids=[],
+            )
         )
 
 
 class EventCandidateAPITest(unittest.TestCase):
     def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
+        pipeline = EventCandidatePipeline(
+            EventCandidateStore(Path(self.directory.name) / "state.sqlite3"),
+            StubResolver(),
+        )
         self.app = create_app(
-            state_path=Path(self.directory.name) / "state.sqlite3",
             service_token="token",
             start_worker=False,
-            event_resolver=StubResolver(),
+            event_pipeline=pipeline,
         )
         self.client = TestClient(self.app)
         self.headers = {"Authorization": "Bearer token"}
@@ -76,7 +84,7 @@ class EventCandidateAPITest(unittest.TestCase):
 
         import asyncio
 
-        asyncio.run(self.app.state.event_candidate_module.process_pending(limit=1))
+        asyncio.run(self.app.state.event_candidate_pipeline.process_pending(limit=1))
         status = self.client.get(
             f"/api/reason/v1/event-candidates/{submission_id}", headers=self.headers
         )

@@ -19,7 +19,7 @@ from analysis.event.contracts import (
     VariableCandidate,
 )
 from analysis.event.errors import PermanentEventAnalysisFailure
-from ingestion.episcode.event.graphiti.projector import (
+from ingestion.episcode.event.provenance import (
     EVENT_SOURCE_DESCRIPTION,
     event_episode_uuid,
     formal_event_id_from_content,
@@ -96,9 +96,6 @@ class GraphitiSignalFactProjector:
             provenance_confidence=proposal.provenance_confidence,
             mechanism_confidence=proposal.mechanism_confidence,
             temporal_confidence=proposal.temporal_confidence,
-            analysis_run_id=str(
-                uuid5(NAMESPACE_URL, f"urn:tidewise:event-analysis:{event.event.id}")
-            ),
             methodology_version=METHODOLOGY_VERSION,
         ).model_dump(mode="json", exclude_none=True)
         edge = EntityEdge(
@@ -144,10 +141,65 @@ class GraphitiSignalFactProjector:
         )
         await resolved.save(self._graphiti.driver)
 
-        if resolved.uuid not in episode.entity_edges:
-            episode.entity_edges.append(resolved.uuid)
-            await episode.save(self._graphiti.driver)
+        await self._link_event_episode(
+            episode_uuid=episode.uuid,
+            event_id=event.event.id,
+            fact_uuid=resolved.uuid,
+        )
         return resolved.uuid
+
+    async def _link_event_episode(
+        self, *, episode_uuid: str, event_id: str, fact_uuid: str
+    ) -> None:
+        """Append Fact provenance without serializing the partial EpisodicNode model.
+
+        Graphiti's public EpisodicNode does not model Tidewise's episode_kind and
+        domain_object_id extensions. Saving that partial model would therefore
+        remove those properties from Neo4j. This targeted update changes only the
+        native entity_edges field and fails closed if the formal Event identity is
+        missing.
+        """
+
+        records, _, _ = await self._graphiti.driver.execute_query(
+            """
+            /* signal_fact_link_event_episode */
+            MATCH (episode:Episodic {
+                uuid: $episode_uuid,
+                group_id: $group_id,
+                episode_kind: 'EVENT',
+                domain_object_id: $event_id
+            })
+            WHERE episode.source_description = $source_description
+            SET episode.entity_edges = CASE
+                WHEN $fact_uuid IN coalesce(episode.entity_edges, [])
+                    THEN coalesce(episode.entity_edges, [])
+                ELSE coalesce(episode.entity_edges, []) + $fact_uuid
+            END
+            RETURN episode.uuid AS uuid,
+                   episode.episode_kind AS episode_kind,
+                   episode.domain_object_id AS domain_object_id,
+                   episode.entity_edges AS entity_edges
+            """,
+            episode_uuid=episode_uuid,
+            event_id=event_id,
+            fact_uuid=fact_uuid,
+            group_id=GRAPHITI_GROUP_ID,
+            source_description=EVENT_SOURCE_DESCRIPTION,
+        )
+        if len(records) != 1:
+            raise PermanentEventAnalysisFailure(
+                "formal Event Episode metadata is missing during Signal projection"
+            )
+        row = records[0]
+        if (
+            str(row["uuid"]) != episode_uuid
+            or row["episode_kind"] != "EVENT"
+            or row["domain_object_id"] != event_id
+            or fact_uuid not in row["entity_edges"]
+        ):
+            raise PermanentEventAnalysisFailure(
+                "Signal provenance was not linked to the formal Event Episode"
+            )
 
     async def _existing_event_episode_ids(
         self, episode_uuids: list[str], *, current: EpisodicNode

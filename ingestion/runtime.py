@@ -18,15 +18,16 @@ from analysis.event.module import EventAnalysisModule
 from analysis.event.pipeline import EventAnalysisPipeline
 from analysis.event.review import ControlledSignalReviewer
 from analysis.event.store import EventAnalysisStore
-from analysis.event.trigger import AnalysisSchedulingEventProjector
 from ingestion.app import create_app
 from ingestion.episcode.event.adapters import (
     CompositeEventHistory,
     DataEventClient,
     GraphitiLLMComparator,
 )
-from ingestion.episcode.event.graphiti import GraphitiEventProjector
+from ingestion.episcode.event.pipeline import EventCandidatePipeline
 from ingestion.episcode.event.resolver import EventResolver
+from ingestion.episcode.event.stages.episode import GraphitiEpisodeStage
+from ingestion.episcode.event.store import EventCandidateStore
 from projection.runtime import GraphitiProviderConfig, create_graphiti
 
 
@@ -65,6 +66,21 @@ def load_ingestion_config(
 
 
 def create_runtime_app(config: IngestionRuntimeConfig) -> FastAPI:
+    event_pipeline, analysis_module, data = create_runtime_pipeline(config)
+    return create_app(
+        service_token=config.service_token.get_secret_value(),
+        event_pipeline=event_pipeline,
+        event_analysis_module=analysis_module,
+        dependency_readiness=(data.ready, event_pipeline.ready),
+        shutdown_callbacks=(event_pipeline.close,),
+        worker_poll_interval_seconds=config.worker_poll_interval_seconds,
+        worker_batch_size=config.worker_batch_size,
+    )
+
+
+def create_runtime_pipeline(config: IngestionRuntimeConfig):
+    """Compose the one Event Candidate Pipeline shared by API and CLI."""
+
     graphiti = create_graphiti(config)
     data = DataEventClient(
         str(config.tidewise_data_base_url),
@@ -81,22 +97,15 @@ def create_runtime_app(config: IngestionRuntimeConfig) -> FastAPI:
     analysis_module = EventAnalysisModule(
         EventAnalysisStore(config.state_path), analysis_pipeline
     )
-    projector = AnalysisSchedulingEventProjector(
-        GraphitiEventProjector(graphiti), analysis_module
-    )
     resolver = EventResolver(
         CompositeEventHistory(graphiti, data),
         GraphitiLLMComparator(graphiti),
         data,
-        projector,
     )
-    return create_app(
-        state_path=config.state_path,
-        service_token=config.service_token.get_secret_value(),
-        event_resolver=resolver,
-        event_analysis_module=analysis_module,
-        dependency_readiness=(data.ready, projector.ready),
-        shutdown_callbacks=(projector.close,),
-        worker_poll_interval_seconds=config.worker_poll_interval_seconds,
-        worker_batch_size=config.worker_batch_size,
+    event_pipeline = EventCandidatePipeline(
+        EventCandidateStore(config.state_path),
+        resolver,
+        GraphitiEpisodeStage(graphiti),
+        analysis_module,
     )
+    return event_pipeline, analysis_module, data

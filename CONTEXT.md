@@ -46,9 +46,13 @@ not a global node property.
 _Avoid_: Company, Security, complete Industry Chain, temporary event action
 
 **Concept**:
-A cross-industry technology, policy, application, demand, business-model, ecosystem, event-narrative
-or market-theme fact with a stable identity and reviewed boundary.
-_Avoid_: Industry classification, Industry Chain, Industry Chain Node, temporary event tag
+A governed stock-market concept board or investment theme with a stable identity and reviewed
+boundary in authoritative Tidewise Data master data. It groups securities and industry objects that
+share an investment narrative, technology direction or business logic. A policy-themed Concept is
+still a governed market theme; a concrete policy action is not a Concept.
+_Avoid_: generic research concept, policy or regulatory action, temporary event tag, Product,
+technology term without a governed market-theme identity, Industry classification, Industry Chain,
+Industry Chain Node, Company, Security
 
 **Company**:
 An independently operating business entity belonging to one or more Industries, Industry Chain
@@ -124,6 +128,21 @@ remain distinct and auditable through upstream Evidence links. A Data-published 
 Graphiti through its native Episode pipeline, which may create contextual Entities and explicit
 Facts without making them authoritative Tidewise master data.
 _Avoid_: Research Event, Scenario Event, Signal, forecast, investment conclusion
+
+**Event Class**:
+The single primary layer where a formal Event's actor, action and object occur: geopolitical,
+macroeconomic policy, Industry Chain or Industry Chain Node. `COMPANY` remains a compatibility
+classification but Company Signal construction and Company-level reasoning are outside the current
+scope. Classification narrows retrieval; it is not an Entity and is not inferred from downstream
+effects.
+_Avoid_: Event tag Entity, affected-layer list, Storyline, permanent Episode identity
+
+**Signal Fact**:
+A Graphiti `EntityEdge` Fact from one existing controlled Variable to one existing Analysis Anchor,
+with `name=SIGNAL_ON`, formal Event Episode provenance, business-valid time and reviewed Tidewise
+attributes for direction, magnitude, impact window, mechanism and confidence. Its endpoints must
+already have stable graph identities; Signal extraction never creates endpoints.
+_Avoid_: Signal Entity node, Event mention, static Variable-to-Anchor applicability edge, investment conclusion
 
 **Event Candidate Submission**:
 Agent OS 已从 Evidence 提炼的一次现实动作候选及其 Evidence IDs，由 Reasoning

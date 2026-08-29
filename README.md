@@ -159,6 +159,13 @@ POST /api/reason/v1/event-candidates
 GET  /api/reason/v1/event-candidates/{submission_id}
 ```
 
+Local operators may use the CLI entry with the same JSON contract and Pipeline:
+
+```bash
+python -m ingestion.episcode.event.cli submit candidate.json --wait
+python -m ingestion.episcode.event.cli status evt-submission-...
+```
+
 Reason resolves Event identity, publishes a genuinely new Event and its Evidence links through
 Data Service, then projects only the returned formal Event into Graphiti. Configure
 `REASON_API_SERVICE_TOKEN` in the private mode-`0600` runtime environment, then use only the
@@ -170,14 +177,15 @@ bash infra/graphiti/verify-api.sh
 bash infra/graphiti/stop-api.sh
 ```
 
-The API binds to the fixed address <http://127.0.0.1:8890>. Its workflow state is stored in the
+The API binds to the fixed address <http://127.0.0.1:8890>. Its Pipeline state is stored in the
 dedicated `tidewise-reason_graphiti-api-state` volume; stopping the service does not delete that
 volume.
 
 Formal Events use Graphiti's native `add_episode()` pipeline, including entity extraction and
 resolution, contextual Entity creation, explicit Fact extraction, Fact deduplication and temporal
-invalidation. A thin adapter preserves deterministic Event Episode identity and marks the completed
-Episode with `episode_kind=EVENT` and its Data Event ID. Native Graphiti processing does not create
+invalidation. An internal Pipeline Stage preserves deterministic Event Episode identity and marks
+the completed Episode with `episode_kind=EVENT` and its Data Event ID. It is not a separate
+publication interface. Native Graphiti processing does not create
 Tidewise Variables, Signals or Storylines; those remain separate reasoning stages.
 
 ## Deployment boundary

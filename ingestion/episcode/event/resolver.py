@@ -1,9 +1,10 @@
-"""Same-occurrence resolution and side-effect orchestration."""
+"""Event identity resolution and authoritative Data publication stage."""
 
 from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Protocol
 
 from ingestion.episcode.event.contracts import (
@@ -27,16 +28,6 @@ class DataPublisher(Protocol):
     async def publish(self, submission) -> HistoricalEvent: ...
 
 
-class EventProjector(Protocol):
-    async def project(self, event: HistoricalEvent) -> None: ...
-
-
-class ProjectionPending(RuntimeError):
-    def __init__(self, event: HistoricalEvent, outcome: EventResolutionOutcome):
-        super().__init__("Graphiti Event projection is pending")
-        self.event, self.outcome = event, outcome
-
-
 class ComparisonUnavailable(RuntimeError):
     """The bounded semantic decision could not produce a safe structured result."""
 
@@ -47,6 +38,14 @@ class EventHistoryUnavailable(RuntimeError):
 
 class PublicationRejected(RuntimeError):
     """Data rejected a publication with a permanent 4xx contract response."""
+
+
+@dataclass(frozen=True)
+class EventResolution:
+    """One resolution decision and the formal Event requiring downstream stages."""
+
+    outcome: EventResolutionOutcome
+    published_event: HistoricalEvent | None = None
 
 
 def _term(value: str) -> str:
@@ -80,14 +79,43 @@ def potentially_same(candidate, historical) -> bool:
 
 
 class EventResolver:
-    def __init__(self, history: HistoryRetriever, comparator: EventComparator, publisher: DataPublisher, projector: EventProjector):
-        self._history, self._comparator, self._publisher, self._projector = history, comparator, publisher, projector
+    def __init__(
+        self,
+        history: HistoryRetriever,
+        comparator: EventComparator,
+        publisher: DataPublisher,
+    ) -> None:
+        self._history = history
+        self._comparator = comparator
+        self._publisher = publisher
 
     async def _evaluate_history(self, candidate, history: list[HistoricalEvent]) -> EventResolutionOutcome | None:
         exact_ids = {
             item.id for item in history if same_occurrence(candidate, item.event)
         }
-        same_ids = set(exact_ids)
+        if len(exact_ids) > 1:
+            return EventResolutionOutcome(
+                decision="NEEDS_REVIEW",
+                event_id=None,
+                event_created=False,
+                evidence_link_result="NOT_ATTEMPTED",
+                graph_projection_status="NOT_ATTEMPTED",
+                reason_codes=["MULTIPLE_STRONG_EVENT_MATCHES"],
+                matched_event_ids=sorted(exact_ids),
+            )
+        if len(exact_ids) == 1:
+            event_id = next(iter(exact_ids))
+            return EventResolutionOutcome(
+                decision="SAME_EVENT",
+                event_id=event_id,
+                event_created=False,
+                evidence_link_result="IGNORED",
+                graph_projection_status="IGNORED",
+                reason_codes=["SAME_REAL_WORLD_OCCURRENCE"],
+                matched_event_ids=[event_id],
+            )
+
+        same_ids: set[str] = set()
         review_ids: set[str] = set()
         reason_codes: list[str] = []
 
@@ -159,18 +187,14 @@ class EventResolver:
         submission,
         on_published: Callable[[EventResolutionOutcome, HistoricalEvent], None] | None = None,
         on_publication_started: Callable[[str], None] | None = None,
-    ) -> EventResolutionOutcome:
+    ) -> EventResolution:
         published_event = getattr(submission, "published_event", None)
         if published_event is not None:
             decision = getattr(submission, "pending_decision", None) or "NEW_EVENT"
             outcome = EventResolutionOutcome(decision=decision, event_id=published_event.id,
                 event_created=True, evidence_link_result="CREATED", graph_projection_status="SUCCEEDED",
                 reason_codes=["NO_SAME_OCCURRENCE_FOUND"], matched_event_ids=[])
-            try:
-                await self._projector.project(published_event)
-            except Exception as exc:
-                raise ProjectionPending(published_event, outcome) from exc
-            return outcome
+            return EventResolution(outcome, published_event)
 
         if getattr(submission, "publication_started", False):
             decision = getattr(submission, "pending_decision", None) or "NEW_EVENT"
@@ -186,36 +210,34 @@ class EventResolver:
             )
             if on_published is not None:
                 on_published(outcome, published)
-            try:
-                await self._projector.project(published)
-            except Exception as exc:
-                raise ProjectionPending(published, outcome) from exc
-            return outcome
+            return EventResolution(outcome, published)
 
         try:
             atomicity = await self._comparator.assess_atomicity(submission.event)
         except Exception as exc:
             raise ComparisonUnavailable("Event atomicity assessment did not complete") from exc
         if not atomicity.atomic:
-            return EventResolutionOutcome(
-                decision="NEEDS_REVIEW",
-                event_id=None,
-                event_created=False,
-                evidence_link_result="NOT_ATTEMPTED",
-                graph_projection_status="NOT_ATTEMPTED",
-                reason_codes=atomicity.reason_codes,
-                matched_event_ids=[],
+            return EventResolution(
+                EventResolutionOutcome(
+                    decision="NEEDS_REVIEW",
+                    event_id=None,
+                    event_created=False,
+                    evidence_link_result="NOT_ATTEMPTED",
+                    graph_projection_status="NOT_ATTEMPTED",
+                    reason_codes=atomicity.reason_codes,
+                    matched_event_ids=[],
+                )
             )
 
         history = await self._history.retrieve(submission.event)
         if outcome := await self._evaluate_history(submission.event, history):
-            return outcome
+            return EventResolution(outcome)
 
         # A second recall immediately before the external write closes the
         # single-worker queue race between initial comparison and publication.
         final_history = await self._history.retrieve(submission.event)
         if outcome := await self._evaluate_history(submission.event, final_history):
-            return outcome
+            return EventResolution(outcome)
 
         decision = "RELATED_BUT_DISTINCT" if history or final_history else "NEW_EVENT"
         if on_publication_started is not None:
@@ -226,8 +248,4 @@ class EventResolver:
             reason_codes=["NO_SAME_OCCURRENCE_FOUND"], matched_event_ids=[])
         if on_published is not None:
             on_published(outcome, published)
-        try:
-            await self._projector.project(published)
-        except Exception as exc:
-            raise ProjectionPending(published, outcome) from exc
-        return outcome
+        return EventResolution(outcome, published)

@@ -14,6 +14,14 @@ PYTHONPATH="$repo_root" PYTHONPYCACHEPREFIX="$pycache_root" \
     tests.test_ingestion_compose_contract \
     tests.test_projection_runtime \
     tests.test_event_candidate_api \
+    tests.test_event_candidate_cli \
+    tests.test_event_pipeline_structure \
     tests.test_event_resolution \
     tests.test_event_data_client \
-    tests.test_event_graphiti_projector
+    tests.test_event_episode_stage \
+    tests.test_event_analysis_pipeline \
+    tests.test_event_analysis_adapters \
+    tests.test_event_analysis_review \
+    tests.test_event_analysis_candidates \
+    tests.test_signal_fact_projector \
+    tests.test_event_analysis_execution

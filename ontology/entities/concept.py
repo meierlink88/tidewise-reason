@@ -9,7 +9,13 @@ from ontology.enums import ConceptType, ReviewStatus
 
 
 class Concept(TidewiseEntity):
-    """跨行业的技术、政策、需求、应用、商业模式或市场主题概念。"""
+    """由权威主数据维护的股票市场概念板块或投资主题。
+
+    Concept 用于归集共享投资叙事、技术方向或商业逻辑的证券及产业对象。只有已存在于
+    Tidewise Data Concept 主数据、或能明确解析到该主数据的名称才属于本类型。一般政策措施、
+    监管动作、事件标签、产品、普通技术名词、行业、产业链、产业链节点、公司和证券均不属于 Concept。
+    例如“出口管制”是政策动作，不是股票市场概念板块。
+    """
 
     data_object_id: str | None = Field(
         default=None,
@@ -18,16 +24,19 @@ class Concept(TidewiseEntity):
     )
     aliases: list[str] = Field(
         default_factory=list,
-        description="用于将文本提及解析到同一 Concept 的稳定别名。",
+        description="用于将文本提及解析到同一权威股票市场概念板块的稳定别名。",
     )
     concept_type: ConceptType | None = Field(
         default=None,
-        description="Concept 业务含义的受控类型。",
+        description=(
+            "股票市场概念板块的受控主题类型；POLICY 仅表示已纳入 Concept 主数据的"
+            "政策主题板块，不表示加息、出口管制等具体政策动作。"
+        ),
     )
     definition: str | None = Field(
         default=None,
         min_length=1,
-        description="Concept 的权威定义和适用边界。",
+        description="股票市场概念板块的权威业务定义、覆盖范围和排除边界。",
     )
     review_status: ReviewStatus | None = Field(
         default=None,

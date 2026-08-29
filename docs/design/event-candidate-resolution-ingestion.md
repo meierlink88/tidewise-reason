@@ -360,38 +360,35 @@ group_id           = neo4j
 命中 `SAME_EVENT` 时不新增 Event Episode，也不更新 Data 或 Graphiti；本次 Candidate 仅在
 Reasoning 执行记录中保留判定结果。
 
-## 8. Reasoning Server 模块结构
+## 8. Reasoning Server Pipeline 结构
 
 遵循现有 `ingestion/episcode/` 结构，建议新增：
 
 ```text
 ingestion/episcode/event/
-  api.py                 # POST/GET HTTP 适配，不含去重规则
+  pipeline.py            # 唯一 EventCandidatePipeline 业务接口
   contracts.py           # Agent OS DTO、状态 DTO
-  module.py              # EventCandidateModule 深接口与状态编排
+  api.py                 # HTTP 入口适配，不含业务决策
+  cli.py                 # CLI 入口适配，复用同一 Pipeline
+  worker.py              # 驱动待处理 Pipeline Run
   store.py               # Candidate、payload hash、决定、Data/Graph 状态
-  worker.py              # 单活动 Resolver Worker、lease、retry
-  resolution/
-    retriever.py         # Graphiti + Data 历史候选召回
-    policy.py            # 确定性身份规则与决策聚合
-    comparator.py        # LLM 受控比较
-  data/
-    client.py            # Data Event create 适配器
-    contracts.py         # Data wire DTO，不复用 Agent OS DTO
-  graphiti/
-    projector.py         # 正式 Event 的 Graphiti 原生 Episode 投影
-    retriever.py         # Event Episode 全文/邻域查询
+  resolver.py            # 历史召回、身份规则、LLM 比较与 Data 发布
+  adapters.py            # Data、Graphiti 和 LLM provider 适配
+  stages/
+    episode.py           # Pipeline 内部 Graphiti add_episode Stage
 ```
 
 模块对外只暴露：
 
 ```python
-EventCandidateModule.accept(candidate) -> Acceptance
-EventCandidateModule.get(submission_id) -> ResolutionStatus
+EventCandidatePipeline.submit(candidate) -> Acceptance
+EventCandidatePipeline.get_status(submission_id) -> ResolutionStatus
+EventCandidatePipeline.process_pending(limit) -> int
 ```
 
-API、Graphiti、Data Client 和 LLM 不互相直接调用，所有流程都由 `module.py` 编排。这样后续
-Agent OS 提炼方式变化时，只要继续满足 Candidate 合同，就不影响去重和发布内部实现。
+API 和 CLI 只能调用 `EventCandidatePipeline`；Graphiti Episode Stage、Data Client 和 LLM
+比较不是业务入口。这样 Agent OS 提炼方式变化时，只要继续满足 Candidate
+合同，就不影响去重和发布内部实现。
 
 ## 9. 一致性与失败处理
 

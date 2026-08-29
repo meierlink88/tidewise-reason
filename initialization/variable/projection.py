@@ -259,7 +259,9 @@ async def inspect_graph_state(
                variable.variable_catalog_source AS variable_catalog_source,
                labels(variable) AS labels,
                size(variable.name_embedding) AS embedding_dimension,
-               count(relation) AS relationship_count
+               count(relation) AS relationship_count,
+               count(CASE WHEN relation.name = 'SIGNAL_ON' THEN relation END)
+                   AS signal_relationship_count
         ORDER BY variable.variable_id
         """,
         group_id=GROUP_ID,
@@ -285,8 +287,11 @@ def verify_state(
         problems.append("Variable 节点 label 不唯一")
     if any(node["embedding_dimension"] != 1024 for node in nodes):
         problems.append("Variable 节点向量缺失或维度错误")
-    if any(node["relationship_count"] != 0 for node in nodes):
-        problems.append("基本面 Variable 初始化不应创建锚点或其他关系")
+    if any(
+        node["relationship_count"] != node["signal_relationship_count"]
+        for node in nodes
+    ):
+        problems.append("基本面 Variable 只能具有分析阶段创建的 Signal Fact 关系")
     for uuid, expected_node in expected.items():
         actual_node = actual.get(uuid)
         if actual_node is None:
@@ -306,6 +311,9 @@ def verify_state(
     return {
         **plan.summary(),
         "node_total": len(nodes),
-        "relationship_total": sum(int(node["relationship_count"]) for node in nodes),
+        "signal_relationship_total": sum(
+            int(node["signal_relationship_count"]) for node in nodes
+        ),
+        "catalog_relationship_total": 0,
         "verified": True,
     }

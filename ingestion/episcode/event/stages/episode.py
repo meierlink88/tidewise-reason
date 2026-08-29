@@ -1,18 +1,23 @@
-"""Native Graphiti Episode projection for formal Tidewise Events."""
+"""Internal native Graphiti Episode stage for formal Tidewise Events."""
 
 from __future__ import annotations
 
 import json
-from uuid import NAMESPACE_URL, uuid5
+from datetime import UTC, datetime
 
 from graphiti_core import Graphiti
-from graphiti_core.nodes import EpisodeType
+from graphiti_core.nodes import EpisodeType, EpisodicNode
 from pydantic import BaseModel
 
 from ingestion.episcode.event.contracts import HistoricalEvent
+from ingestion.episcode.event.provenance import (
+    EVENT_SOURCE_DESCRIPTION,
+    PENDING_EVENT_SOURCE_DESCRIPTION,
+    event_episode_uuid,
+    formal_event_id_from_content,
+)
 from ontology import ENTITY_TYPES
 from projection.runtime import GRAPHITI_GROUP_ID
-
 
 EVENT_EPISODE_KIND = "EVENT"
 EVENT_ENTITY_TYPE_NAMES = (
@@ -27,9 +32,10 @@ EVENT_ENTITY_TYPE_NAMES = (
 
 
 def event_entity_types() -> dict[str, type[BaseModel]]:
-    """Return a fresh, explicitly approved extraction registry for one Event Episode."""
+    """Return a fresh approved extraction registry for one Event Episode."""
 
     return {name: ENTITY_TYPES[name] for name in EVENT_ENTITY_TYPE_NAMES}
+
 
 EXTRACTION_INSTRUCTIONS = """
 The JSON is one canonical investment Event published by Tidewise Data. Extract entities and factual
@@ -45,36 +51,35 @@ into Event facts.
 FIND_EVENT = """
 /* graphiti_event_projection_identity */
 MATCH (episode:Episodic {group_id: $group_id})
-WHERE episode.uuid = $episode_uuid OR episode.domain_object_id = $event_id
+WHERE episode.uuid = $episode_uuid
 RETURN episode.uuid AS uuid, episode.name AS name, episode.content AS content,
-       coalesce(episode.tidewise_ingestion_complete, false) AS complete,
-       episode.episode_kind AS episode_kind, episode.domain_object_id AS domain_object_id
-LIMIT 2
+       episode.source_description AS source_description,
+       episode.episode_kind AS episode_kind,
+       episode.domain_object_id AS domain_object_id
+LIMIT 1
 """.strip()
 
 MARK_EVENT = """
 /* graphiti_native_event_metadata */
 MATCH (episode:Episodic {uuid: $episode_uuid, group_id: $group_id})
 WHERE episode.content = $content
-  AND (episode.domain_object_id IS NULL OR episode.domain_object_id = $event_id)
 SET episode.name = $title,
+    episode.source_description = $source_description,
     episode.episode_kind = 'EVENT',
-    episode.domain_object_id = $event_id,
-    episode.tidewise_ingestion_complete = true
-RETURN episode.uuid AS uuid
+    episode.domain_object_id = $event_id
+RETURN episode.uuid AS uuid, episode.episode_kind AS episode_kind,
+       episode.domain_object_id AS domain_object_id
 """.strip()
 
 
-class GraphitiEventProjector:
-    """Project a Data-published Event through Graphiti's native Episode pipeline."""
+class GraphitiEpisodeStage:
+    """Internal Pipeline stage; never a standalone Event publication interface."""
 
     def __init__(self, graphiti: Graphiti):
         self._graphiti = graphiti
 
-    async def project(self, historical: HistoricalEvent) -> None:
-        episode_uuid = str(
-            uuid5(NAMESPACE_URL, f"urn:tidewise:event-episode:{historical.id}")
-        )
+    async def execute(self, historical: HistoricalEvent) -> str:
+        episode_uuid = event_episode_uuid(historical.id)
         content = json.dumps(
             {
                 "id": historical.id,
@@ -88,7 +93,6 @@ class GraphitiEventProjector:
         records, _, _ = await self._graphiti.driver.execute_query(
             FIND_EVENT,
             episode_uuid=episode_uuid,
-            event_id=historical.id,
             group_id=GRAPHITI_GROUP_ID,
             routing_="r",
         )
@@ -103,15 +107,15 @@ class GraphitiEventProjector:
                 raise RuntimeError("Graphiti Event Episode has a non-deterministic identity")
             if row["content"] != content:
                 raise RuntimeError("Graphiti Event Episode conflicts with Data Event")
-            if row["domain_object_id"] not in (None, historical.id):
+            if formal_event_id_from_content(str(row["content"])) != historical.id:
                 raise RuntimeError("Graphiti Event Episode has a conflicting domain identity")
-            if (
-                row["complete"]
-                and row["episode_kind"] == EVENT_EPISODE_KIND
-                and row["domain_object_id"] == historical.id
-            ):
-                if row["name"] == historical.event.title:
-                    return
+            source_description = str(row["source_description"])
+            if source_description not in {
+                EVENT_SOURCE_DESCRIPTION,
+                PENDING_EVENT_SOURCE_DESCRIPTION,
+            }:
+                raise RuntimeError("Graphiti Event Episode has a conflicting source identity")
+            if source_description == EVENT_SOURCE_DESCRIPTION:
                 native_projection_required = False
 
         valid_at = (
@@ -121,10 +125,23 @@ class GraphitiEventProjector:
         )
         assert valid_at is not None
         if native_projection_required:
+            if not records:
+                await EpisodicNode(
+                    uuid=projected_uuid,
+                    name=historical.event.title,
+                    group_id=GRAPHITI_GROUP_ID,
+                    labels=[],
+                    source=EpisodeType.json,
+                    content=content,
+                    source_description=PENDING_EVENT_SOURCE_DESCRIPTION,
+                    created_at=datetime.now(UTC),
+                    valid_at=valid_at,
+                    entity_edges=[],
+                ).save(self._graphiti.driver)
             result = await self._graphiti.add_episode(
                 name=historical.event.title,
                 episode_body=content,
-                source_description="Published canonical Event from Data Service",
+                source_description=EVENT_SOURCE_DESCRIPTION,
                 reference_time=valid_at,
                 source=EpisodeType.json,
                 group_id=GRAPHITI_GROUP_ID,
@@ -143,9 +160,16 @@ class GraphitiEventProjector:
             event_id=historical.id,
             title=historical.event.title,
             content=content,
+            source_description=EVENT_SOURCE_DESCRIPTION,
         )
-        if len(written) != 1 or str(written[0]["uuid"]) != projected_uuid:
+        if (
+            len(written) != 1
+            or str(written[0]["uuid"]) != projected_uuid
+            or written[0]["episode_kind"] != EVENT_EPISODE_KIND
+            or written[0]["domain_object_id"] != historical.id
+        ):
             raise RuntimeError("Graphiti Event Episode metadata was not persisted")
+        return projected_uuid
 
     async def ready(self) -> bool:
         records, _, _ = await self._graphiti.driver.execute_query(

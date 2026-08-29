@@ -16,7 +16,7 @@ from ontology.entities import organization
 from ontology.entities import region
 from ontology.entities import variable
 
-ONTOLOGY_VERSION = "reasoning-ontology/v3"
+ONTOLOGY_VERSION = "reasoning-ontology/v4"
 
 _ENTITY_SCHEMAS: tuple[ModuleType, ...] = (
     country,

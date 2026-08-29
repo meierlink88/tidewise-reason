@@ -11,4 +11,5 @@ python_bin="$runtime_root/bin/python"
 cd "$repo_root"
 PYTHONPATH="$repo_root" exec "$python_bin" -m unittest \
   tests/test_ontology_contract.py \
-  tests/test_macroeconomic_demo_initialization.py
+  tests/test_macroeconomic_demo_initialization.py \
+  tests/test_variable_catalog_initialization.py

@@ -25,6 +25,8 @@ from ontology.enums import (
     GeopoliticRivalryType,
     MacroEconomicStatus,
     MacroEconomicCategory,
+    VariableGroup,
+    VariableRole,
 )
 
 
@@ -79,7 +81,7 @@ class OntologyContractTest(unittest.TestCase):
             EDGE_TYPE_MAP[("IndustryChain", "Concept")],
             ["IndustryChainMappedToConcept"],
         )
-        self.assertEqual(ONTOLOGY_VERSION, "reasoning-ontology/v3")
+        self.assertEqual(ONTOLOGY_VERSION, "reasoning-ontology/v4")
 
     def test_graphiti_models_are_pydantic_classes_without_protected_fields(self) -> None:
         protected = {
@@ -137,7 +139,7 @@ class OntologyContractTest(unittest.TestCase):
     def test_catalog_is_serializable_and_exposes_source_target_pairs(self) -> None:
         catalog = ontology_catalog()
         json.dumps(catalog)
-        self.assertEqual(catalog["version"], "reasoning-ontology/v3")
+        self.assertEqual(catalog["version"], "reasoning-ontology/v4")
         self.assertEqual(
             catalog["entity_links"]["CountryInRegion"]["source_targets"],
             [{"source": "Country", "target": "Region"}],
@@ -184,6 +186,8 @@ class OntologyContractTest(unittest.TestCase):
     def test_variable_is_one_controlled_dimension_for_multiple_anchor_types(self) -> None:
         variable = Variable(
             variable_id="selling_price",
+            variable_role="FUNDAMENTAL",
+            variable_group="PRICE_PROFITABILITY",
             aliases=["销售价格", "ASP"],
             definition="The realized or anticipated selling price for the scoped output.",
             measurement_basis="Currency per scoped output unit or a reviewed qualitative trend.",
@@ -193,6 +197,8 @@ class OntologyContractTest(unittest.TestCase):
         )
 
         self.assertEqual(variable.variable_id, "selling_price")
+        self.assertEqual(variable.variable_role, VariableRole.FUNDAMENTAL)
+        self.assertEqual(variable.variable_group, VariableGroup.PRICE_PROFITABILITY)
         self.assertEqual(
             [anchor.value for anchor in variable.allowed_anchor_types],
             ["ChainNode", "Company"],
@@ -200,6 +206,8 @@ class OntologyContractTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             Variable(
                 variable_id="SELLING_PRICE",
+                variable_role="FUNDAMENTAL",
+                variable_group="PRICE_PROFITABILITY",
                 definition="Invalid uppercase identity.",
                 measurement_basis="Qualitative trend.",
                 allowed_anchor_types=["ChainNode"],
@@ -208,7 +216,25 @@ class OntologyContractTest(unittest.TestCase):
             )
         with self.assertRaises(ValidationError):
             Variable(
+                variable_id="investment_attractiveness",
+                variable_role="INVESTMENT_ASSESSMENT",
+                variable_group="PRICE_PROFITABILITY",
+                definition="Investment assessment dimensions require their dedicated group.",
+                measurement_basis="Reviewed reasoning result.",
+                allowed_anchor_types=["ChainNode"],
+                maintenance_owner="Reasoning",
+                catalog_version="variable-catalog/v1",
+            )
+        self.assertEqual(
+            {item.value for item in VariableRole},
+            {"FUNDAMENTAL", "INVESTMENT_ASSESSMENT"},
+        )
+        self.assertIn("COMPANY_FINANCIAL", {item.value for item in VariableGroup})
+        with self.assertRaises(ValidationError):
+            Variable(
                 variable_id="selling_price",
+                variable_role="FUNDAMENTAL",
+                variable_group="PRICE_PROFITABILITY",
                 definition="Selling price.",
                 measurement_basis="Qualitative trend.",
                 allowed_anchor_types=["ChainNode", "ChainNode"],
@@ -217,6 +243,8 @@ class OntologyContractTest(unittest.TestCase):
             )
         normalized = Variable(
             variable_id="selling_price",
+            variable_role="FUNDAMENTAL",
+            variable_group="PRICE_PROFITABILITY",
             aliases=[" ASP "],
             definition="Selling price.",
             measurement_basis="Qualitative trend.",
@@ -228,6 +256,8 @@ class OntologyContractTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             Variable(
                 variable_id="selling_price",
+                variable_role="FUNDAMENTAL",
+                variable_group="PRICE_PROFITABILITY",
                 definition="Selling price.",
                 measurement_basis="Qualitative trend.",
                 allowed_anchor_types=["ChainNode"],
@@ -238,6 +268,8 @@ class OntologyContractTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             Variable(
                 variable_id="selling_price",
+                variable_role="FUNDAMENTAL",
+                variable_group="PRICE_PROFITABILITY",
                 definition="Selling price.",
                 measurement_basis="Qualitative trend.",
                 allowed_anchor_types=["ChainNode"],
@@ -249,6 +281,8 @@ class OntologyContractTest(unittest.TestCase):
     def test_variable_catalog_validates_identity_and_rule_references(self) -> None:
         source = Variable(
             variable_id="market_supply",
+            variable_role="FUNDAMENTAL",
+            variable_group="SUPPLY_CAPACITY",
             definition="Available market supply.",
             measurement_basis="Reviewed qualitative or quantitative supply.",
             allowed_anchor_types=["ChainNode"],
@@ -257,6 +291,8 @@ class OntologyContractTest(unittest.TestCase):
         )
         derived = Variable(
             variable_id="selling_price",
+            variable_role="FUNDAMENTAL",
+            variable_group="PRICE_PROFITABILITY",
             definition="Selling price.",
             measurement_basis="Currency per output unit.",
             allowed_anchor_types=["ChainNode"],
@@ -280,6 +316,8 @@ class OntologyContractTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             Variable(
                 variable_id="selling_price",
+                variable_role="FUNDAMENTAL",
+                variable_group="PRICE_PROFITABILITY",
                 aliases=["价格", " 价格 "],
                 definition="Selling price.",
                 measurement_basis="Qualitative trend.",
@@ -306,6 +344,8 @@ class OntologyContractTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             Variable(
                 variable_id="selling_price",
+                variable_role="FUNDAMENTAL",
+                variable_group="PRICE_PROFITABILITY",
                 definition=" ",
                 measurement_basis="Qualitative trend.",
                 allowed_anchor_types=["ChainNode"],
@@ -315,6 +355,8 @@ class OntologyContractTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             Variable(
                 variable_id="selling_price",
+                variable_role="FUNDAMENTAL",
+                variable_group="PRICE_PROFITABILITY",
                 definition="Missing anchor applicability.",
                 measurement_basis="Qualitative trend.",
                 allowed_anchor_types=[],

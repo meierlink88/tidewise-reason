@@ -6,7 +6,7 @@ from typing import Annotated
 from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
 
 from ontology.entities.base import NonBlankText, TidewiseEntity
-from ontology.enums import AnalysisAnchorType
+from ontology.enums import AnalysisAnchorType, VariableGroup, VariableRole
 
 
 VariableID = Annotated[
@@ -24,6 +24,17 @@ class Variable(TidewiseEntity):
 
     variable_id: VariableID = Field(
         description="Reason Variable 版本化目录中稳定、全小写的业务键。",
+    )
+    variable_role: VariableRole = Field(
+        description=(
+            "Variable 在投研推理中的受控角色：基本面观测维度或投资判断维度。"
+        ),
+    )
+    variable_group: VariableGroup = Field(
+        description=(
+            "Variable 的主分类，用于按因果通道缩小 AI 候选变量范围；"
+            "不创建任何锚点关系。"
+        ),
     )
     aliases: list[NonBlankText] = Field(
         default_factory=list,
@@ -71,6 +82,12 @@ class Variable(TidewiseEntity):
 
     @model_validator(mode="after")
     def validate_local_rules(self) -> "Variable":
+        investment_role = self.variable_role == VariableRole.INVESTMENT_ASSESSMENT
+        investment_group = self.variable_group == VariableGroup.INVESTMENT_ASSESSMENT
+        if investment_role != investment_group:
+            raise ValueError(
+                "INVESTMENT_ASSESSMENT role and group must be declared together"
+            )
         if len(set(self.allowed_anchor_types)) != len(self.allowed_anchor_types):
             raise ValueError("allowed_anchor_types must not contain duplicates")
 

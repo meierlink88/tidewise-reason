@@ -41,7 +41,7 @@ unscoped `docker compose down`, `--remove-orphans`, or volume-removal commands i
 ## Graphiti Ontology
 
 The formal Graphiti extraction types live in [`ontology/`](ontology/). The
-`reasoning-ontology/v3` catalog mirrors selected Tidewise Data entity and stable-link contracts and
+`reasoning-ontology/v4` catalog mirrors selected Tidewise Data entity and stable-link contracts and
 contains no authoritative facts. Evidence does not enter Graphiti.
 
 ```bash
@@ -137,6 +137,17 @@ reads or writes Tidewise Data, never sets `data_object_id`, and never deletes gr
 bash scripts/initialize-macroeconomic-demo.sh plan
 bash scripts/initialize-macroeconomic-demo.sh run
 bash scripts/initialize-macroeconomic-demo.sh verify
+```
+
+The Reason-owned `variable-catalog/v1` packages 56 fundamental Variables in nine causal groups.
+It writes deterministic, embedded `Variable` nodes only. `allowed_anchor_types` remains applicability
+metadata; the initializer does not create Variable-to-anchor or any other relationship, does not
+call the LLM, and does not delete graph data:
+
+```bash
+bash scripts/initialize-variable-catalog.sh plan
+bash scripts/initialize-variable-catalog.sh run
+bash scripts/initialize-variable-catalog.sh verify
 ```
 
 ## Event Candidate Ingestion
